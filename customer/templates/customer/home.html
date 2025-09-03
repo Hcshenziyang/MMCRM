@@ -1,0 +1,13 @@
+{% extends "customer/base.html" %}
+
+{% block title %}主页 - 喵喵CRM{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 50px 20px; max-width: 800px; margin: 0 auto;">
+    <h2>欢迎来到 喵喵CRM</h2>
+    <p style="font-size: 18px; color: #555;">你好，{{ user.username }}！这是你的个人主页。</p>
+    <div style="margin-top: 30px;">
+        <a href="{% url 'logout' %}" style="padding: 12px 20px; font-size: 18px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">登出</a>
+    </div>
+</div>
+{% endblock %}

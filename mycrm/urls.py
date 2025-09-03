@@ -16,10 +16,9 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
-from customer.views import hello
+from django.urls import path, include
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("hello/",hello)
+    path("admin/", admin.site.urls),         # Django 自带后台
+    path("", include("customer.urls")),      # 把根路径交给 customer.urls 管理
 ]
