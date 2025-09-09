@@ -5,11 +5,15 @@ from django.contrib import messages
 from .forms import RegisterForm
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from .serializers import UserSerializer, CustomerSerializer
 from rest_framework import viewsets, permissions
 from rest_framework.filters import OrderingFilter, SearchFilter
 from .models import Customer
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.viewsets import ModelViewSet
+from django.contrib.auth.decorators import login_required
+import requests
 
 def has_multiple_char_types(s):
     # 字符串判断
@@ -84,12 +88,28 @@ class CustomersSet(viewsets.ModelViewSet):
     # 启用 DRF 自带的过滤后端。
     # SearchFilter：允许在 URL 上用 ?search=关键字 来搜索数据。
     # OrderingFilter：允许在 URL 上用 ?ordering=字段名 来排序。
+    permission_classes = [IsAuthenticated]  # 加上这行，给 API 上锁！
 
     def get_queryset(self):
-        return Customer.objects.all()
-        # return Customer.objects.filter(owner=self.request.user)  # 只返回当前用户
+        # 查询函数
+        return Customer.objects.filter(owner=self.request.user)  # 只返回当前用户
 
     def perform_create(self, serializer):
-        serializer.save()
-        # perform_create 是 DRF 在执行 create() 方法时会调用的钩子。
-        # 默认 serializer.save() 就会把数据存进数据库。
+        serializer.save(owner=self.request.user)
+
+@login_required
+def customer_list_view(request):
+    api_url = request.build_absolute_uri('/api/customers/')
+    session_id = request.session.session_key
+    cookies = {'sessionid': session_id}
+
+    try:
+        response = requests.get(api_url, cookies=cookies)
+        response.raise_for_status()
+        customers = response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"API 请求失败：{e}")
+        customers = []
+
+    return render(request, 'customer/customer_list.html',
+                  {'customers':customers})

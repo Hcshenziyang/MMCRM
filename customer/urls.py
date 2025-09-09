@@ -2,6 +2,7 @@ from . import views
 from .views import CurrentUserAPIView, CustomersSet
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from rest_framework.authtoken.views import obtain_auth_token
 
 
 router = DefaultRouter()
@@ -13,4 +14,5 @@ urlpatterns = [
     path("logout/", views.logout_view, name="logout"),
     path("home/", views.home_view, name="home"),
     path("api/", include(router.urls)),
+    path('customers/', views.customer_list_view, name='customer_list'),
 ]

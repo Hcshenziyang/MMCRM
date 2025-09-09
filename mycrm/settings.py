@@ -130,14 +130,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # DRF基本配置（分页+认证）
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",  # 管理后台/浏览器调试方便
-        # "rest_framework.authentication.TokenAuthentication",  # 如需 Token/JWT 可替换
-    ],
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-    ],
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 10,
-}
+# REST_FRAMEWORK = {
+#     # "DEFAULT_AUTHENTICATION_CLASSES": [
+#     #     "rest_framework.authentication.SessionAuthentication",  # 管理后台/浏览器调试方便
+#     #     # "rest_framework.authentication.TokenAuthentication",  # 如需 Token/JWT 可替换
+#     # ],
+#     # "DEFAULT_PERMISSION_CLASSES": [
+#     #     "rest_framework.permissions.IsAuthenticated",
+#     # ],
+#     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+#     "PAGE_SIZE": 10,
+# }

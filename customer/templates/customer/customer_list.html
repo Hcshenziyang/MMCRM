@@ -1,0 +1,39 @@
+{% extends "customer/base.html" %}
+
+{% block title %}我的客户 - 喵喵CRM{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto; padding: 20px;">
+    <h2 style="text-align: center; margin-bottom: 20px;">我的客户列表</h2>
+
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead style="background-color: #333; color: white;">
+            <tr>
+                <th style="padding: 12px; text-align: left;">姓名</th>
+                <th style="padding: 12px; text-align: left;">邮箱</th>
+                <th style="padding: 12px; text-align: left;">电话</th>
+                <th style="padding: 12px; text-align: left;">负责人</th>
+            </tr>
+        </thead>
+        <tbody>
+            {# 'customers'就是我们从view的context里传过来的列表 #}
+            {% for customer in customers %}
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 12px;">{{ customer.name }}</td>
+                    <td style="padding: 12px;">{{ customer.email|default:'--' }}</td>
+                    <td style="padding: 12px;">{{ customer.phone|default:'--' }}</td>
+                    {# 还记得吗？我们在Serializer里把owner变成了用户名字符串 #}
+                    <td style="padding: 12px;">{{ customer.owner }}</td> 
+                </tr>
+            {% empty %}
+                {# 如果customers列表是空的，就显示这个 #}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 20px; color: #777;">
+                        您还没有客户，快去添加第一个客户吧！
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -54,6 +54,7 @@
             {% if request.user.is_authenticated %}
                 欢迎，{{ request.user.username }} |
                 <a href="{% url 'home' %}">主页</a> |
+                <a href="{% url 'customer_list' %}">我的客户</a> |
                 <a href="{% url 'logout' %}">退出</a>
             {% else %}
                 <a href="{% url 'login' %}">登录</a> |
