@@ -5,156 +5,94 @@
 {% block content %}
 <style>
     /* --- Modal 样式 --- */
-    /* 弹窗背景遮罩 */
     .modal-overlay {
-        display: none; /* 默认隐藏 */
+        display: none;
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5); /* 半透明黑色背景 */
-        justify-content: center;
-        align-items: center;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        justify-content: center; align-items: center;
         z-index: 1000;
     }
-
-    /* 弹窗内容区域 */
     .modal-content {
         background-color: white;
         padding: 25px;
         border-radius: 8px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        width: 400px;
-        max-width: 90%;
+        width: 400px; max-width: 90%;
     }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 20px;}
+    .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #888; }
 
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 15px;
-    }
+    .modal-form-group { margin-bottom: 15px; }
+    .modal-form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+    .modal-form-group input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
 
-    .modal-header h3 {
-        margin: 0;
-    }
+    .modal-actions { text-align: right; margin-top: 20px; }
+    .action-btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-left: 10px; }
+    .save-btn { background-color: #28a745; color: white; }
+    .cancel-btn { background-color: #6c757d; color: white; }
 
-    /* 关闭按钮 */
-    .close-btn {
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        color: #888;
-    }
+    .table-action-btn { padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 5px; }
+    .edit-btn { background-color: #ffc107; color: #333; }
+    .delete-btn { background-color: #dc3545; color: white; }
 
-    /* 表单样式 */
-    .modal-form-group {
-        margin-bottom: 15px;
-    }
-
-    .modal-form-group label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-    }
-
-    .modal-form-group input {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        box-sizing: border-box; /* 确保 padding 不会影响宽度 */
-    }
-
-    .modal-actions {
-        text-align: right;
-        margin-top: 20px;
-    }
-
-    .action-btn {
-        padding: 10px 15px;
+    .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
+    .toolbar button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    .download-btn { background-color: #17a2b8; color: white; }
+    .upload-btn { background-color: #6f42c1; color: white; }
+    .toolbar label.upload-btn {
+        padding: 8px 15px;
         border: none;
         border-radius: 4px;
         cursor: pointer;
         font-size: 14px;
-        margin-left: 10px;
+        display: inline-block;
+        text-align: center;
     }
 
-    .save-btn {
-        background-color: #28a745;
-        color: white;
-    }
-    .cancel-btn {
-        background-color: #6c757d;
-        color: white;
-    }
-
-    /* --- 表格按钮样式 --- */
-    .table-action-btn {
-        padding: 5px 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        margin-right: 5px;
-    }
-    .edit-btn {
-        background-color: #ffc107;
-        color: #333;
-    }
-    .delete-btn {
-        background-color: #dc3545;
-        color: white;
-    }
+    th.sortable { cursor: pointer; }
+    th.sortable span { font-size: 12px; margin-left: 4px; }
 </style>
 
-<div style="max-width: 900px; margin: 0 auto; padding: 20px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+<div style="max-width: 1100px; margin: 0 auto; padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h2 style="margin: 0;">我的客户列表</h2>
-        <button id="add-customer-btn" style="padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
-            &#43; 新增客户
-        </button>
+        <div class="toolbar">
+            <button id="download-excel-btn" class="download-btn">导出 Excel</button>
+            <label for="upload-excel-input" class="upload-btn" style="cursor:pointer;">导入 Excel</label>
+            <input type="file" id="upload-excel-input" accept=".xlsx" style="display:none;">
+            <button id="add-customer-btn" style="background-color: #28a745; color: white;">新增客户</button>
+        </div>
     </div>
+
+    <!-- 搜索区域 -->
+    <form id="search-form" style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <input type="text" id="search-input" placeholder="输入姓名、电话、邮箱或地址搜索..." style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <button type="submit" style="padding: 8px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px;">搜索</button>
+        <button type="button" id="clear-search-btn" style="padding: 8px 15px; background-color: #6c757d; color: white; border: none; border-radius: 4px;">清空</button>
+    </form>
 
     <table style="width: 100%; border-collapse: collapse;">
         <thead style="background-color: #333; color: white;">
             <tr>
-                <th style="padding: 12px; text-align: left;">姓名</th>
+                <th class="sortable" data-field="name" style="padding: 12px; text-align: left;">姓名 <span></span></th>
                 <th style="padding: 12px; text-align: left;">邮箱</th>
                 <th style="padding: 12px; text-align: left;">电话</th>
                 <th style="padding: 12px; text-align: left;">地址</th>
                 <th style="padding: 12px; text-align: left;">负责人</th>
+                <th class="sortable" data-field="created_at" style="padding: 12px; text-align: left;">创建时间 <span></span></th>
+                <th class="sortable" data-field="updated_at" style="padding: 12px; text-align: left;">更新时间 <span></span></th>
                 <th style="padding: 12px; text-align: left; width: 120px;">操作</th>
             </tr>
         </thead>
         <tbody id="customer-table-body">
-            {% for customer in customers %}
-                <tr style="border-bottom: 1px solid #ddd;" data-id="{{ customer.id }}">
-                    <td style="padding: 12px;" data-field="name">{{ customer.name }}</td>
-                    <td style="padding: 12px;" data-field="email">{{ customer.email|default:'--' }}</td>
-                    <td style="padding: 12px;" data-field="phone">{{ customer.phone|default:'--' }}</td>
-                    <td style="padding: 12px;" data-field="address">{{ customer.address|default:'--' }}</td>
-                    <td style="padding: 12px;" data-field="owner">{{ customer.owner }}</td>
-                    <td style="padding: 12px;">
-                        <button class="table-action-btn edit-btn">编辑</button>
-                        <button class="table-action-btn delete-btn">删除</button>
-                    </td>
-                </tr>
-            {% empty %}
-                <tr id="empty-row">
-                    <td colspan="5" style="text-align: center; padding: 20px; color: #777;">
-                        您还没有客户，快去添加第一个客户吧！
-                    </td>
-                </tr>
-            {% endfor %}
+            <tr><td colspan="8" style="text-align: center; padding: 20px; color: #777;">加载中...</td></tr>
         </tbody>
     </table>
 </div>
 
+<!-- Modal -->
 <div id="customer-modal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
@@ -163,22 +101,10 @@
         </div>
         <form id="modal-form">
             <input type="hidden" id="customer-id-input">
-            <div class="modal-form-group">
-                <label for="name-input">姓名</label>
-                <input type="text" id="name-input" required>
-            </div>
-            <div class="modal-form-group">
-                <label for="phone-input">电话 (可选)</label>
-                <input type="tel" id="phone-input">
-            </div>
-            <div class="modal-form-group">
-                <label for="email-input">邮箱 (可选)</label>
-                <input type="email" id="email-input">
-            </div>
-            <div class="modal-form-group">
-                <label for="address-input">地址 (可选)</label>
-                <input type="text" id="address-input">
-            </div>
+            <div class="modal-form-group"><label for="name-input">姓名</label><input type="text" id="name-input" required></div>
+            <div class="modal-form-group"><label for="phone-input">电话</label><input type="tel" id="phone-input"></div>
+            <div class="modal-form-group"><label for="email-input">邮箱</label><input type="email" id="email-input"></div>
+            <div class="modal-form-group"><label for="address-input">地址</label><input type="text" id="address-input"></div>
             <div class="modal-actions">
                 <button type="button" class="action-btn cancel-btn">取消</button>
                 <button type="submit" class="action-btn save-btn">保存</button>
@@ -189,24 +115,20 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- CSRF Token 获取函数 ---
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
+            for (const cookie of document.cookie.split(';')) {
+                const c = cookie.trim();
+                if (c.startsWith(name + '=')) { cookieValue = decodeURIComponent(c.substring(name.length + 1)); break; }
             }
         }
         return cookieValue;
     }
     const csrftoken = getCookie('csrftoken');
+    const API_BASE_URL = '/api/customers/';
 
-    // --- 获取所有需要的DOM元素 ---
+    // DOM
     const addBtn = document.getElementById('add-customer-btn');
     const customerTableBody = document.getElementById('customer-table-body');
     const modal = document.getElementById('customer-modal');
@@ -217,146 +139,166 @@ document.addEventListener('DOMContentLoaded', function() {
     const phoneInput = document.getElementById('phone-input');
     const emailInput = document.getElementById('email-input');
     const addressInput = document.getElementById('address-input');
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input');
+    const clearSearchBtn = document.getElementById('clear-search-btn');
+    const sortableHeaders = document.querySelectorAll('th.sortable');
+    const downloadBtn = document.getElementById('download-excel-btn');
+    const uploadInput = document.getElementById('upload-excel-input');
+    let currentSearch = '';
+    let currentOrdering = '';
 
-    // --- 弹窗控制函数 ---
-    function openModal() {
-        modal.style.display = 'flex';
-    }
-
-    function closeModal() {
-        modal.style.display = 'none';
-        modalForm.reset(); // 清空表单
-        customerIdInput.value = ''; // 清空隐藏的ID
-    }
-
-    // 弹窗关闭按钮 和 取消按钮
-    modal.querySelector('#close-modal-btn').addEventListener('click', closeModal);
-    modal.querySelector('.cancel-btn').addEventListener('click', closeModal);
-
-    // 点击遮罩区域关闭弹窗
-    modal.addEventListener('click', function(event) {
-        if (event.target === modal) {
-            closeModal();
-        }
-    });
-
-    // --- 事件监听：点击“新增客户”按钮 ---
-    addBtn.addEventListener('click', function() {
-        modalTitle.textContent = '新增客户';
-        openModal();
-    });
-
-    // --- 表单提交处理（新增或编辑）---
-    modalForm.addEventListener('submit', function(event) {
-        event.preventDefault(); // 阻止表单默认的刷新页面的提交行为
-
-        const customerId = customerIdInput.value;
-        const isEditing = !!customerId; // 如果customerId有值，则为编辑模式
-
-        const url = isEditing ? `/api/customers/${customerId}/` : '/api/customers/';
-        const method = isEditing ? 'PATCH' : 'POST';
-
-        const formData = {
-            name: nameInput.value,
-            phone: phoneInput.value,
-            email: emailInput.value,
-            address: addressInput.value,
-        };
-
-        fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken,
-            },
-            body: JSON.stringify(formData),
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('请求失败');
-            return response.json();
-        })
+    // fetch + 渲染
+    function fetchCustomers() {
+        let url = `${API_BASE_URL}?search=${encodeURIComponent(currentSearch)}&ordering=${currentOrdering}`;
+        fetch(url, { headers: { 'X-CSRFToken': csrftoken } })
+        .then(r => r.json())
         .then(data => {
-            if (isEditing) {
-                // 更新表格中的行
-                const row = customerTableBody.querySelector(`tr[data-id='${customerId}']`);
-                row.querySelector('[data-field="name"]').textContent = data.name;
-                row.querySelector('[data-field="email"]').textContent = data.email || '--';
-                row.querySelector('[data-field="address"]').textContent = data.address || '--';
-                row.querySelector('[data-field="phone"]').textContent = data.phone || '--';
-                alert('客户更新成功！');
-            } else {
-                // 在表格中添加新行
-                const emptyRow = document.getElementById('empty-row');
-                if(emptyRow) emptyRow.remove(); // 如果存在“空数据”提示，先移除
-
-                const newRowHtml = `
-                    <tr style="border-bottom: 1px solid #ddd;" data-id="${data.id}">
-                        <td style="padding: 12px;" data-field="name">${data.name}</td>
-                        <td style="padding: 12px;" data-field="email">${data.email || '--'}</td>
-                        <td style="padding: 12px;" data-field="phone">${data.phone || '--'}</td>
-                        <td style="padding: 12px;" data-field="address">${data.address || '--'}</td>
-                        <td style="padding: 12px;" data-field="owner">${data.owner}</td>
-                        <td style="padding: 12px;">
-                            <button class="table-action-btn edit-btn">编辑</button>
-                            <button class="table-action-btn delete-btn">删除</button>
-                        </td>
-                    </tr>
-                `;
-                customerTableBody.insertAdjacentHTML('beforeend', newRowHtml);
-                alert('客户添加成功！');
+            customerTableBody.innerHTML = '';
+            if (data.length === 0) {
+                customerTableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#777;">没有找到客户</td></tr>';
+                return;
             }
-            closeModal();
+            for (const c of data) {
+                const row = `
+                <tr style="border-bottom:1px solid #ddd;" data-id="${c.id}">
+                    <td data-field="name">${c.name}</td>
+                    <td data-field="email">${c.email || '--'}</td>
+                    <td data-field="phone">${c.phone || '--'}</td>
+                    <td data-field="address">${c.address || '--'}</td>
+                    <td data-field="owner">${c.owner_username || 'N/A'}</td>
+                    <td data-field="created_at">${new Date(c.created_at).toLocaleString()}</td>
+                    <td data-field="updated_at">${new Date(c.updated_at).toLocaleString()}</td>
+                    <td>
+                        <button class="table-action-btn edit-btn">编辑</button>
+                        <button class="table-action-btn delete-btn">删除</button>
+                    </td>
+                </tr>`;
+                customerTableBody.insertAdjacentHTML('beforeend', row);
+            }
         })
-        .catch(error => {
-            console.error('操作失败:', error);
-            alert('操作失败，请检查控制台输出。');
+        .catch(err => {
+            console.error(err);
+            customerTableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:red;">加载失败</td></tr>';
+        });
+    }
+
+    // 搜索
+    searchForm.addEventListener('submit', e => {
+        e.preventDefault();
+        currentSearch = searchInput.value.trim();
+        fetchCustomers();
+    });
+    clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        currentSearch = '';
+        fetchCustomers();
+    });
+
+    // 排序
+    sortableHeaders.forEach(th => {
+        th.addEventListener('click', () => {
+            const field = th.dataset.field;
+            if (currentOrdering === field) {
+                currentOrdering = '-' + field; // 切换到降序
+            } else {
+                currentOrdering = field; // 切换到升序
+            }
+            // 更新箭头
+            sortableHeaders.forEach(h => h.querySelector('span').textContent = '');
+            th.querySelector('span').textContent = currentOrdering.startsWith('-') ? '↓' : '↑';
+            fetchCustomers();
         });
     });
 
-    // --- 事件委托：处理表格中的点击事件 ---
-    customerTableBody.addEventListener('click', function(event) {
-        const target = event.target;
-        const customerRow = target.closest('tr');
-        if (!customerRow || !customerRow.dataset.id) return;
+    // --- Excel 导出 ---
+    downloadBtn.addEventListener('click', () => {
+        fetch(`${API_BASE_URL}export_excel/`, {
+            method: 'GET',
+            headers: { 'X-CSRFToken': csrftoken }
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'customers.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(() => alert('导出失败'));
+    });
 
-        const customerId = customerRow.dataset.id;
+    // --- Excel 导入 ---
+    uploadInput.addEventListener('change', () => {
+        const file = uploadInput.files[0];
+        if (!file) return;
 
-        // --- 处理“编辑”逻辑 ---
-        if (target.classList.contains('edit-btn')) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch(`${API_BASE_URL}import_excel/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(`导入完成：新增 ${data.created} 条，更新 ${data.updated} 条`);
+            fetchCustomers();
+        })
+        .catch(() => alert('导入失败'));
+    });
+
+    // Modal 控制
+    function openModal() { modal.style.display = 'flex'; }
+    function closeModal() { modal.style.display = 'none'; modalForm.reset(); customerIdInput.value = ''; }
+    document.getElementById('close-modal-btn').onclick = closeModal;
+    modal.querySelector('.cancel-btn').onclick = closeModal;
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+    // 新增
+    addBtn.addEventListener('click', () => { modalTitle.textContent = '新增客户'; openModal(); });
+
+    // 提交（新增/编辑）
+    modalForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const customerId = customerIdInput.value;
+        const isEditing = !!customerId;
+        const url = isEditing ? `${API_BASE_URL}${customerId}/` : API_BASE_URL;
+        const method = isEditing ? 'PATCH' : 'POST';
+        const body = JSON.stringify({ name: nameInput.value, phone: phoneInput.value, email: emailInput.value, address: addressInput.value });
+        fetch(url, { method, headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken }, body })
+        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+        .then(() => { closeModal(); fetchCustomers(); alert(isEditing ? '客户更新成功！' : '客户添加成功！'); })
+        .catch(() => alert('操作失败'));
+    });
+
+    // 表格事件（编辑 / 删除）
+    customerTableBody.addEventListener('click', e => {
+        const row = e.target.closest('tr'); if (!row) return;
+        const id = row.dataset.id;
+        if (e.target.classList.contains('edit-btn')) {
             modalTitle.textContent = '编辑客户';
-
-            // 从表格行中获取当前数据并填充到表单
-            customerIdInput.value = customerId;
-            nameInput.value = customerRow.querySelector('[data-field="name"]').textContent;
-            phoneInput.value = customerRow.querySelector('[data-field="phone"]').textContent;
-            emailInput.value = customerRow.querySelector('[data-field="email"]').textContent.replace('--', '');
-            addressInput.value = customerRow.querySelector('[data-field="address"]').textContent;
-            openModal()
+            customerIdInput.value = id;
+            nameInput.value = row.querySelector('[data-field="name"]').textContent;
+            phoneInput.value = row.querySelector('[data-field="phone"]').textContent.replace('--','');
+            emailInput.value = row.querySelector('[data-field="email"]').textContent.replace('--','');
+            addressInput.value = row.querySelector('[data-field="address"]').textContent.replace('--','');
+            openModal();
         }
-
-        // --- 处理“删除”逻辑 ---
-        if (target.classList.contains('delete-btn')) {
+        if (e.target.classList.contains('delete-btn')) {
             if (confirm('确定要删除这位客户吗？')) {
-                fetch(`/api/customers/${customerId}/`, {
-                    method: 'DELETE',
-                    headers: { 'X-CSRFToken': csrftoken },
-                })
-                .then(response => {
-                    if (response.ok) {
-                        customerRow.remove();
-                        alert('删除成功！');
-                        if (customerTableBody.getElementsByTagName('tr').length === 0) {
-                            const emptyRowHtml = `<tr id="empty-row"><td colspan="5" style="text-align: center; padding: 20px; color: #777;">您还没有客户，快去添加第一个客户吧！</td></tr>`;
-                            customerTableBody.innerHTML = emptyRowHtml;
-                        }
-                    } else {
-                        alert('删除失败！');
-                    }
-                })
-                .catch(error => console.error('删除请求失败:', error));
+                fetch(`${API_BASE_URL}${id}/`, { method: 'DELETE', headers: { 'X-CSRFToken': csrftoken } })
+                .then(r => { if (r.ok) { row.remove(); alert('删除成功'); } else alert('删除失败'); });
             }
         }
     });
+
+    // 首次加载
+    fetchCustomers();
 });
 </script>
 {% endblock %}
