@@ -1,0 +1,169 @@
+<template>
+  <uni-popup ref="popup" type="center" :mask-click="false">
+    <view class="multi-picker-container">
+      <view class="multi-picker-header">
+        <text class="multi-picker-title">{{ title }}</text>
+        <uni-icons type="closeempty" size="24" @click="cancel"></uni-icons>
+      </view>
+      <scroll-view scroll-y class="multi-picker-scroll">
+        <uni-data-checkbox 
+          v-model="internalSelectedValues" 
+          :localdata="pickerOptions" 
+          mode="list" 
+          multiple
+          selected-color="#fea17a"
+        ></uni-data-checkbox>
+      </scroll-view>
+      <view class="multi-picker-actions">
+        <button class="multi-picker-btn cancel-btn" @click="cancel">取消</button>
+        <button class="multi-picker-btn confirm-btn" @click="confirm">确定</button>
+      </view>
+    </view>
+  </uni-popup>
+</template>
+
+<script>
+import UniPopup from '../../uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
+import UniDataCheckbox from '../../uni_modules/uni-data-checkbox/components/uni-data-checkbox/uni-data-checkbox.vue';
+import UniIcons from '../../uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+
+export default {
+  components: {
+    UniPopup,
+    UniDataCheckbox,
+    UniIcons
+  },
+  props: {
+    value: {
+      type: Array,
+      default: () => [],
+    },
+    options: {
+      type: Array,
+      default: () => [],
+    },
+    title: {
+      type: String,
+      default: '请选择',
+    }
+  },
+  data() {
+    return {
+      internalSelectedValues: [], 
+    };
+  },
+  computed: {
+    pickerOptions() {
+      return this.options.map(item => ({
+        text: item.name,
+        value: String(item.id), // 统一字符串，配合 uni-data-checkbox
+      }));
+    },
+  },
+  watch: {
+    value: {
+      handler(newVal) {
+        this.internalSelectedValues = Array.isArray(newVal)
+          ? newVal.map(v => String(v))
+          : [];
+      },
+      immediate: true,
+    },
+  },
+  methods: {
+	open() {
+	  this.internalSelectedValues = Array.isArray(this.value)
+	    ? this.value.map(v => String(v))
+	    : [];
+	  this.$refs.popup.open('center');
+	},
+    close() {
+      this.$refs.popup.close();
+    },
+
+	confirm() {
+	  const ids = this.internalSelectedValues.map(v => Number(v));
+	  console.log("ID 数据:", ids);
+	  this.$emit('change', ids);
+	  this.close();
+	},
+    cancel() {
+      this.close();
+    },
+  },
+};
+</script>
+
+<style scoped>
+.multi-picker-container {
+  background-color: #fff;
+  width: 600rpx; /* 适应小程序单位 */
+  max-width: 450px; /* PC 端最大宽度 */
+  border-radius: 10px;
+  padding: 20px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh; /* 限制高度，超出滚动 */
+}
+
+.multi-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.multi-picker-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.multi-picker-scroll {
+  flex: 1; /* 占据剩余空间 */
+  overflow-y: auto; /* 垂直滚动 */
+  margin-bottom: 15px;
+  /* 确保uni-data-checkbox在滚动区域内 */
+}
+
+/* uni-data-checkbox 的样式调整 */
+/* 如果默认样式不满意，可以通过::v-deep 或 /deep/ 穿透修改 */
+.multi-picker-scroll :deep(.uni-data-checkbox-text) {
+  font-size: 14px;
+}
+.multi-picker-scroll :deep(.uni-data-checkbox-label) {
+  padding: 8px 0;
+}
+
+
+.multi-picker-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+
+.multi-picker-btn {
+  padding: 8px 25px;
+  border-radius: 5px;
+  font-size: 15px;
+  border: none;
+}
+.multi-picker-btn::after {
+  border: none;
+}
+
+.cancel-btn {
+  background-color: #f0f0f0;
+  color: #666;
+}
+
+.confirm-btn {
+  background-color: #fea17a;
+  color: white;
+}
+</style>

@@ -1,0 +1,70 @@
+<template>
+  <layout>
+    <view class="home-container">
+      <view class="card" v-for="item in cards" :key="item.path" @click="go(item.path)">
+        <image :src="item.icon" class="card-icon" />
+        <text class="card-title">{{ item.name }}</text>
+      </view>
+    </view>
+  </layout>
+</template>
+
+<script>
+import Layout from '../layout/layout.uvue'
+export default {
+  components: { Layout },
+  data() {
+    return {
+      cards: [
+        { name: '客户管理', path: '/pages/customer/customer', icon: '/static/customer.png' },
+        { name: '项目管理', path: '/pages/project/project', icon: '/static/project.png' },
+        { name: '权限管理', path: '/pages/permission/permission', icon: '/static/permission.png' }
+      ]
+    }
+  },
+  methods: {
+    go(path) {
+      uni.navigateTo({ url: path })
+    }
+  }
+}
+</script>
+
+<style scoped>
+.home-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 20px;
+}
+
+.card {
+  width: 200px;
+  height: 120px;
+  background: #fff0e2;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.card-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+</style>

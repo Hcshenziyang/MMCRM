@@ -1,0 +1,38 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/home/home",
+      "style": {
+        "navigationBarTitleText": "首页",
+        "navigationStyle": "custom"   // 用自定义头部，避免双标题
+      }
+    },
+    {
+      "path": "pages/customer/customer",
+      "style": {
+        "navigationBarTitleText": "客户管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/project/project",
+      "style": {
+        "navigationBarTitleText": "项目管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/permission/permission",
+      "style": {
+        "navigationBarTitleText": "权限管理",
+        "navigationStyle": "custom"
+      }
+    }
+  ]
+}

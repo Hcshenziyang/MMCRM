@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'user',
     'project',
     'django_filters',
+    'corsheaders',
 ]
 
 
@@ -62,6 +63,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "mycrm.middleware.QueryCountMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
 ]
 
 ROOT_URLCONF = "mycrm.urls"
@@ -189,3 +192,6 @@ CACHES = {
         }
     }
 }
+
+CORS_ALLOW_ALL_ORIGINS = True  # todo 仅仅开发阶段开启
+

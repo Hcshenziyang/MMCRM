@@ -1,0 +1,141 @@
+<template>
+  <view class="login-container">
+    <view class="login-box">
+      <view class="welcome-text">
+        <image src="/static/login_miaomiao.png" class="icon" />
+        <text>欢迎使用喵喵CRM！</text>
+      </view>
+
+      <form @submit.prevent="handleLogin" class="form-box">
+        <input v-model="username" placeholder="用户名" class="input-field" />
+        <input v-model="password" type="password" placeholder="密码" class="input-field" />
+
+        <view class="button-row">
+		  <button class="login-button" @click="handleLogin">登录</button>
+          <button type="button" @click="handleRegister" class="register-button">注册</button>
+        </view>
+      </form>
+      
+      </view>
+  </view>
+</template>
+
+<script>
+import { login } from '../../common/api.js'; // 假设你的 api.js 文件路径正确
+
+export default {
+  data() {
+    return {
+      username: '',
+      password: ''
+    };
+  },
+  methods: {
+	async handleLogin() {
+	  const data = { username: this.username, password: this.password };
+	  try {
+	    const res = await login(data); // 接入后端的时候再解开
+		console.log('Login successful')
+		await uni.reLaunch({ url: '/pages/home/home' }) // 加上 await
+	  } catch (err) {
+	    console.error('Login failed', err);
+	  }
+	},
+	
+    handleRegister() {
+      // uni.navigateTo({ url: '/pages/login/login' }); // 跳转到注册页面
+      console.log('Navigating to register page');
+    }
+  },
+};
+
+
+</script>
+
+
+
+<style scoped>
+.login-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('/static/login.png') no-repeat center center;
+  background-size: cover;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-box {
+  width: 400px;
+  padding: 30px;
+  background-color: #fff5ec;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column; /* 子元素垂直排列 */
+  box-sizing: border-box;
+}
+
+/* 欢迎语：图标和文字在同一行 */
+.welcome-text {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 25px;
+  display: flex; /* 关键：设置为 flex 布局 */
+  flex-direction: row; /* 明确主轴方向为水平 */
+  align-items: center; /* 关键：让内部元素垂直居中 */
+  justify-content: center; /* 关键：让内部元素水平居中 */
+}
+
+.icon {
+  width: 36px;
+  height: 36px;
+  margin-right: 10px;
+}
+
+.form-box {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.input-field {
+  width: 100%;
+  height: 45px;
+  padding: 10px;
+  margin-bottom: 15px; /* 调整输入框间距 */
+  border: 1px solid #fbd7b9;
+  border-radius: 4px;
+  box-sizing: border-box;
+  background-color: #fff0e2;
+}
+
+
+.button-row {
+  display: flex; /* 关键(1): 启用 Flex 布局，使其子元素（按钮）横向排列 */
+  flex-direction: row; /* 明确主轴方向为水平 */
+  justify-content: space-between; /* 子元素之间的对齐方式 */
+  gap: 15px; /* 关键(2): 设置按钮之间的固定间隔 */
+  margin-top: 15px;
+}
+
+.login-button,
+.register-button {
+  flex: 1; /* 关键：让每个按钮平分容器的宽度 */
+  padding: 10px;
+  background-color: #fea17a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.login-button:hover,
+.register-button:hover {
+  background-color: #ffaa7f;
+}
+</style>

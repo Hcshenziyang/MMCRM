@@ -8,6 +8,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.views import View
 # 重要的是在这里覆盖默认设置
 from rest_framework.permissions import AllowAny  # 允许任何请求
+from rest_framework_simplejwt.views import TokenRefreshView
+
 
 
 class RegisterView(APIView):
@@ -48,3 +50,18 @@ class LogoutView(APIView):
         response = Response({"message": "登出成功"})
         response.delete_cookie('access_token')
         return response
+
+
+class RefreshTokenView(TokenRefreshView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.data.get('refresh')
+        if not refresh_token:
+            return Response({"error": "缺少refresh token"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            response = super().post(request, *args, **kwargs)
+            response.data['message'] = "令牌刷新成功"
+            return response
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)

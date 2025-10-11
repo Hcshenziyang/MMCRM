@@ -1,0 +1,104 @@
+<template>
+  <view class="container">
+    <view class="title">用户测试</view>
+
+    <!-- 登录 -->
+    <view class="form">
+      <input v-model="loginForm.username" placeholder="用户名" />
+      <input v-model="loginForm.password" placeholder="密码" password />
+      <button @click="handleLogin">登录</button>
+    </view>
+
+    <!-- 注册 -->
+    <view class="form">
+      <input v-model="registerForm.username" placeholder="注册用户名" />
+      <input v-model="registerForm.password" placeholder="注册密码" password />
+      <button @click="handleRegister">注册</button>
+    </view>
+
+    <!-- 登出 -->
+    <view class="form">
+      <button @click="handleLogout">登出</button>
+    </view>
+
+    <view class="result">
+      {{ message }}
+    </view>
+  </view>
+</template>
+
+<script>
+import { login, register, logout } from "@/common/api.js";
+
+export default {
+  data() {
+    return {
+      loginForm: {
+		  username:"",
+		  password:""
+      },
+      registerForm: {
+        username:"",
+        password:""
+      },
+      message:""
+    };
+  },
+  methods: {
+    async handleLogin() {
+      try {
+        const res = await login(this.loginForm);
+        this.message = "登录成功：" + JSON.stringify(res);
+      } catch (e) {
+        this.message = "登录失败：" + JSON.stringify(e);
+      }
+    },
+    async handleRegister() {
+      try {
+        const res = await register(this.registerForm);
+        this.message = "注册成功：" + JSON.stringify(res);
+      } catch (e) {
+        this.message = "注册失败：" + JSON.stringify(e);
+      }
+    },
+    async handleLogout() {
+      try {
+        const res = await logout();
+        this.message = "登出成功：" + JSON.stringify(res);
+      } catch (e) {
+        this.message = "登出失败：" + JSON.stringify(e);
+      }
+    }
+  }
+};
+</script>
+
+<style>
+.container {
+  padding: 30rpx;
+}
+.title {
+  font-size: 40rpx;
+  margin-bottom: 30rpx;
+}
+.form {
+  margin-bottom: 40rpx;
+}
+input {
+  border: 1px solid #ccc;
+  margin: 10rpx 0;
+  padding: 20rpx;
+  border-radius: 8rpx;
+}
+button {
+  background-color: #007aff;
+  color: #fff;
+  padding: 20rpx;
+  border-radius: 8rpx;
+}
+.result {
+  margin-top: 40rpx;
+  font-size: 28rpx;
+  color: #333;
+}
+</style>

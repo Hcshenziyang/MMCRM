@@ -1,0 +1,819 @@
+<template>
+  <layout>
+    <view class="permission-container">
+      <!-- 顶部切换栏 -->
+      <view class="header-tabs">
+        <uni-segmented-control
+          :current="currentSegment"
+          :values="['用户角色管理', '角色权限管理']"
+          @clickItem="onClickSegment"
+          style-type="button"
+          active-color="#fea17a"
+        ></uni-segmented-control>
+      </view>
+
+      <!-- 用户角色管理模块 -->
+      <view v-if="currentSegment === 0" class="module-content">
+        <view class="module-actions">
+          <button class="add-btn" @click="openUserForm('create')">新增用户</button>
+        </view>
+	
+        <uni-table :loading="userLoading" border stripe emptyText="暂无用户数据">
+          <uni-tr v-for="(item, index) in userList" :key="item.id">
+            <uni-td align="center"><view class="table-cell-content">{{ item.id }}</view></uni-td>
+            <uni-td align="center"><view class="table-cell-content">{{ item.username }}</view></uni-td>
+            <uni-td align="center"><view class="table-cell-content">{{ item.email }}</view></uni-td>
+            <uni-td align="center">
+              <view class="table-cell-content">
+                <view v-for="role in item.groups_read" :key="role.id" style="text-align: center;">{{ role.name }}</view>
+              </view>
+            </uni-td>
+            <uni-td align="center"><view class="table-cell-content">{{ item.last_name + item.first_name }}</view></uni-td>
+            <uni-td align="center">
+              <button class="action-btn edit-btn" size="mini" @click="openUserForm('edit', item)">编辑</button>
+              <button class="action-btn delete-btn" size="mini" @click="deleteUser(item.id)">删除</button>
+            </uni-td>
+          </uni-tr>
+        </uni-table>
+      </view>
+
+      <!-- 角色权限管理模块 -->
+      <view v-else-if="currentSegment === 1" class="module-content">
+        <view class="module-actions">
+          <button class="add-btn" @click="openGroupForm('create')">新增角色</button>
+        </view>
+
+        <uni-table :loading="groupLoading" border stripe emptyText="暂无角色数据">
+          <uni-tr v-for="(item, index) in groupList" :key="item.id">
+            <uni-td align="center"><view class="table-cell-content">{{ item.id }}</view></uni-td>
+            <uni-td align="center"><view class="table-cell-content">{{ item.name }}</view></uni-td>
+			
+			<uni-td align="center">
+			  <view class="table-cell-content">
+			    <text v-for="user in item.users" :key="user.id" style="text-align: center;">{{ user.username }}</text>
+			  </view>
+			</uni-td>
+
+            <uni-td align="center">
+              <view class="table-cell-content">
+                <view v-if="item.permissions && item.permissions.length">
+                  <view v-for="p in item.permissions" :key="p.id" class="text-align: center;">{{ p.name }}</view>
+                </view>
+                <text v-else>暂无权限</text>
+              </view>
+            </uni-td>
+            <uni-td align="center">
+              <button class="action-btn edit-btn" size="mini" @click="openGroupForm('edit', item)">编辑</button>
+              <button class="action-btn delete-btn" size="mini" @click="deleteGroup(item.id)">删除</button>
+            </uni-td>
+          </uni-tr>
+        </uni-table>
+      </view>
+
+      <!-- 用户新增/编辑弹窗 -->
+      <uni-popup ref="userPopup" type="center" :mask-click="false">
+        <view class="popup-content">
+          <view class="popup-title">{{ userFormMode === 'create' ? '新增用户' : '编辑用户' }}</view>
+          <form @submit="submitUserForm">
+            <view class="form-item">
+              <text class="label">用户名:</text>
+              <input class="input" v-model="userFormData.username" placeholder="请输入用户名" required />
+            </view>
+            <view class="form-item">
+              <text class="label">邮箱:</text>
+              <input class="input" v-model="userFormData.email" type="email" placeholder="请输入邮箱" required />
+            </view>
+            <view class="form-item" v-if="userFormMode === 'create'">
+              <text class="label">密码:</text>
+              <input class="input" v-model="userFormData.password" type="password" placeholder="请输入密码" required />
+            </view>
+            <view class="form-item">
+              <text class="label">姓:</text>
+              <input class="input" v-model="userFormData.last_name" placeholder="请输入姓氏" required />
+            </view>
+            <view class="form-item">
+              <text class="label">名:</text>
+              <input class="input" v-model="userFormData.first_name" placeholder="请输入名字" required />
+            </view>
+            <view class="form-item">
+              <text class="label">角色:</text>
+              <view class="picker-value-display" @click="openRoleMultiPicker">
+                {{ userSelectedGroupNames.length ? userSelectedGroupNames.join(', ') : '请选择角色' }}
+              </view>
+            </view>
+            <view class="popup-actions">
+              <button class="cancel-btn" @click="closeUserPopup">取消</button>
+              <button class="submit-btn" form-type="submit" :loading="userSubmitLoading">提交</button>
+            </view>
+          </form>
+        </view>
+      </uni-popup>
+
+      <!-- 角色新增/编辑弹窗 -->
+      <uni-popup ref="groupPopup" type="center" :mask-click="false">
+        <view class="popup-content">
+          <view class="popup-title">{{ groupFormMode === 'create' ? '新增角色' : '编辑角色' }}</view>
+          <form @submit="submitGroupForm">
+            <view class="form-item">
+              <text class="label">角色名称:</text>
+              <input class="input" v-model="groupFormData.name" placeholder="请输入角色名称" required />
+            </view>
+            <view class="form-item">
+              <text class="label">关联用户:</text>
+              <view class="picker-value-display" @click="openGroupUserMultiPicker">
+                {{ groupSelectedUserNames.length ? groupSelectedUserNames.join(', ') : '请选择用户' }}
+              </view>
+            </view>
+            <view class="form-item">
+              <text class="label">权限:</text>
+              <view class="picker-value-display" @click="openGroupPermissionMultiPicker">
+                {{ groupSelectedPermissionNames.length ? groupSelectedPermissionNames.join(', ') : '请选择权限' }}
+              </view>
+            </view>
+            <view class="popup-actions">
+              <button class="cancel-btn" @click="closeGroupPopup">取消</button>
+              <button class="submit-btn" form-type="submit" :loading="groupSubmitLoading">提交</button>
+            </view>
+          </form>
+        </view>
+      </uni-popup>
+	  
+      <!-- 角色多选组件 (用于用户表单) -->
+      <user-role-multi-picker
+        ref="roleMultiPicker"
+        :value="userFormData.groups_write"
+        :options="availableGroups"
+        title="选择角色"
+        @change="onRoleMultiPickerChange"
+      ></user-role-multi-picker>
+	  
+	  <!-- 用户多选组件 (用于角色表单) -->
+	  <user-role-multi-picker
+	    ref="groupUserMultiPicker"
+	    :value="groupFormData.user_ids"
+	    :options="usersForPicker"
+	    title="选择用户"
+	    @change="onGroupUserMultiPickerChange"
+	  />
+	  
+	  <!-- 权限多选组件 (用于角色表单) -->
+	  <user-role-multi-picker
+	    ref="groupPermissionMultiPicker"
+	    :value="groupFormData.permission_ids"
+	    :options="availablePermissions"
+	    title="选择权限"
+	    @change="onGroupPermissionMultiPickerChange"
+	  />
+	  
+    </view>
+  </layout>
+</template>
+
+<script>
+// 基础和第三方组件导入
+import Layout from '../layout/layout.uvue';
+import request from '../../common/request.js';
+import UniSegmentedControl from '../../uni_modules/uni-segmented-control/components/uni-segmented-control/uni-segmented-control.vue';
+import UniTable from '../../uni_modules/uni-table/components/uni-table/uni-table.vue';
+import UniTr from '../../uni_modules/uni-table/components/uni-tr/uni-tr.vue';
+import UniTh from '../../uni_modules/uni-table/components/uni-th/uni-th.vue';
+import UniTd from '../../uni_modules/uni-table/components/uni-td/uni-td.vue';
+import UniPopup from '../../uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
+import UserRoleMultiPicker from '../../components/UserRoleMultiPicker/UserRoleMultiPicker.uvue';
+
+export default {
+  components: {
+    Layout,
+    UniSegmentedControl,
+    UniTable,
+    UniTr,
+    UniTh,
+    UniTd,
+    UniPopup,
+    UserRoleMultiPicker,
+  },
+  data() {
+    return {
+      // 当前选中的分段器索引 (0: 用户管理, 1: 角色管理)
+      currentSegment: 0, 
+
+      // --- 用户管理模块数据 ---
+      userList: [],            // 用户列表
+      userLoading: false,      // 用户表格加载状态
+      userSubmitLoading: false,// 用户表单提交加载状态
+      userFormMode: 'create',  // 用户表单模式: 'create' 或 'edit'
+      userFormData: {          // 用户表单数据
+        id: null,
+        username: '',
+        email: '',
+        password: '',
+        groups_write: [],
+        last_name: '',
+        first_name: '',
+      },
+      availableGroups: [],     // 所有可用角色的列表，用于表单选择
+
+      // --- 角色管理模块数据 ---
+      groupList: [],           // 角色列表
+      groupLoading: false,     // 角色表格加载状态
+      groupSubmitLoading: false, // 角色表单提交加载状态
+      groupFormMode: 'create', // 角色表单模式: 'create' 或 'edit'
+      groupFormData: {         // 角色表单数据
+        id: null,
+        name: '',
+        user_ids: [],
+        permission_ids: []
+      },
+      availableUsers: [],      // 所有可用用户的列表，用于表单选择
+      availablePermissions: [],// 所有可用权限的列表，用于表单选择
+    };
+  },
+  computed: {
+	
+    // 根据选中的角色ID，计算并返回角色名称数组，用于在用户表单中显示
+	userSelectedGroupNames() {
+	  return (this.userFormData.groups_write || [])
+	    .map(id => {
+	      const group = this.availableGroups.find(g => String(g.id) === String(id));
+	      return group ? group.name : '';
+	    })
+	    .filter(Boolean); // 过滤掉无效的名称
+	},
+	
+	// 检查 availableUsers 是否存在且为数组
+	usersForPicker() {
+	  if (!this.availableUsers || !Array.isArray(this.availableUsers)) {
+		return [];
+	  }
+	  return this.availableUsers.map(user => ({
+		id: user.id,
+		name: user.username 
+	  }));
+	},
+	
+    // 根据选中的用户ID，计算并返回用户名称数组，用于在角色表单中显示
+    groupSelectedUserNames() {
+      return (this.groupFormData.user_ids || [])
+        .map(id => {
+		  const user = this.availableUsers.find(user => user.id === id);
+		  return user ? user.username : '';
+		})
+		.filter(Boolean);
+    },
+    
+    /**
+     * @description 根据选中的权限ID，计算并返回权限名称数组，用于在角色表单中显示
+     */
+	groupSelectedPermissionNames() {
+	  return (this.groupFormData.permission_ids || [])
+	    .map(id => {
+	      const p = this.availablePermissions.find(p => p.id === id);
+	      return p ? p.name : '';
+	    })
+	    .filter(Boolean);
+	},
+  },
+  /**
+   * @description 页面加载时，初始化数据
+   */
+  onLoad() {
+    this.fetchUsers();
+    this.fetchAllGroupsForPicker();
+    this.fetchAllUsersForPicker(); 
+    this.fetchAllPermissionsForPicker(); 
+  },
+	
+  methods: {
+    // --- 通用方法 ---
+    /**
+     * @description 切换顶部Tab，并根据当前Tab刷新数据
+     */
+    onClickSegment(e) {
+      if (this.currentSegment !== e.currentIndex) {
+        this.currentSegment = e.currentIndex;
+        if (this.currentSegment === 0) {
+          this.fetchUsers();
+          this.fetchAllGroupsForPicker();
+        } else {
+          this.fetchGroups();
+          this.fetchAllUsersForPicker();
+        }
+      }
+    },
+	
+    /**
+     * @description 显示Toast提示
+     */
+    async showToast(title, icon = 'none', duration = 1500) {
+      uni.showToast({ title, icon, duration });
+    },
+
+    // --- 用户管理模块方法 ---
+    /**
+     * @description 从API获取用户列表
+     */
+    async fetchUsers() {
+      this.userLoading = true;
+      try {
+        const res = await request("/permission/users/", "GET");
+        this.userList = res;
+      } catch (e) {
+        console.error("获取用户列表失败:", e);
+        this.showToast(`获取用户列表失败: ${e.statusCode === 401 ? '请先登录' : (e.data ? JSON.stringify(e.data) : e.errMsg || e.message)}`, 'error');
+        if (e.statusCode === 401) {
+            uni.reLaunch({ url: '/pages/login/login' });
+        }
+      } finally {
+        this.userLoading = false;
+      }
+    },
+	
+    /**
+     * @description 获取所有角色数据，用于用户表单中的角色选择器
+     */
+    async fetchAllGroupsForPicker() {
+      try {
+        const res = await request("/permission/groups/", "GET");
+        this.availableGroups = res;
+      } catch (e) {
+        console.error("获取所有角色失败:", e);
+        this.showToast(`获取所有角色失败: ${e.statusCode === 401 ? '请先登录' : (e.data ? JSON.stringify(e.data) : e.errMsg || e.message)}`, 'error');
+      }
+    },
+
+    /**
+     * @description 打开用户表单弹窗 (新增或编辑)
+     * @param {string} mode - 'create' 或 'edit'
+     * @param {object|null} user - 在编辑模式下传入的用户对象
+     */
+	openUserForm(mode, user = null) {
+	  this.userFormMode = mode;
+	  this.resetUserFormData();
+	
+	  if (mode === 'edit' && user) {
+	    this.userFormData.id = user.id;
+	    this.userFormData.username = user.username;
+	    this.userFormData.email = user.email;
+	    this.userFormData.last_name = user.last_name || '';
+	    this.userFormData.first_name = user.first_name || '';
+	    if (user.groups_read && user.groups_read.length > 0) {
+	     this.userFormData.groups_write = user.groups_read.map(g => Number(g.id));
+	    }
+	  }
+	  this.$refs.userPopup.open('center');
+	},
+	
+    /**
+     * @description 关闭并重置用户表单
+     */
+    closeUserPopup() {
+      this.$refs.userPopup.close();
+      this.resetUserFormData();
+    },
+    
+    /**
+     * @description 重置用户表单数据
+     */
+    resetUserFormData() {
+      this.userFormData = {
+        id: null,
+        username: '',
+        email: '',
+        password: '',
+        groups_write: [],
+		last_name:'',
+		first_name:'',
+      };
+    },
+    
+    /**
+     * @description 提交用户表单（创建或更新）
+     */
+    async submitUserForm() {
+      if (this.userSubmitLoading) return;
+      this.userSubmitLoading = true;
+
+      try {
+        const payload = { ...this.userFormData };
+        payload.groups_write = payload.groups_write || []; 
+
+        if (this.userFormMode === 'create') {
+          if (!payload.password) {
+            this.showToast('请输入密码', 'none');
+            this.userSubmitLoading = false;
+            return;
+          }
+          await request("/permission/users/", "POST", payload);
+          this.showToast('用户创建成功', 'success');
+        } else {
+          // 编辑模式下，如果密码为空则不提交密码字段
+          if (!payload.password) {
+            delete payload.password;
+          }
+          await request(`/permission/users/${payload.id}/`, "PATCH", payload);
+          this.showToast('用户更新成功', 'success');
+        }
+        this.closeUserPopup();
+        this.fetchUsers(); // 刷新用户列表
+        this.fetchAllUsersForPicker(); // 同时刷新角色表单中可用的用户列表
+      } catch (e) {
+        console.error("提交用户表单失败:", e);
+        this.showToast(`操作失败: ${e.data ? JSON.stringify(e.data) : e.errMsg || e.message}`, 'error');
+      } finally {
+        this.userSubmitLoading = false;
+      }
+    },
+
+    /**
+     * @description 删除用户
+     */
+    async deleteUser(id) {
+      uni.showModal({
+        title: '提示',
+        content: '确定要删除此用户吗？',
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              await request(`/permission/users/${id}/`, "DELETE");
+              this.showToast('用户删除成功', 'success');
+              this.fetchUsers();
+              this.fetchAllUsersForPicker();
+            } catch (e) {
+              console.error("删除用户失败:", e);
+              this.showToast('删除用户失败', 'error');
+            }
+          }
+        }
+      });
+    },
+
+    // --- 角色管理模块方法 ---
+    /**
+     * @description 从API获取角色列表
+     */
+    async fetchGroups() {
+      this.groupLoading = true;
+      try {
+        const res = await request("/permission/groups/", "GET");
+        this.groupList = res;
+      } catch (e) {
+        console.error("获取角色列表失败:", e);
+        this.showToast(`获取角色列表失败: ${e.statusCode === 401 ? '请先登录' : (e.data ? JSON.stringify(e.data) : e.errMsg || e.message)}`, 'error');
+        if (e.statusCode === 401) {
+            uni.reLaunch({ url: '/pages/login/login' });
+        }
+      } finally {
+        this.groupLoading = false;
+      }
+    },
+
+    /**
+     * @description 获取所有用户数据，用于角色表单中的用户选择器
+     */
+    async fetchAllUsersForPicker() {
+      try {
+        const res = await request("/permission/users/", "GET");
+        this.availableUsers = res;
+      } catch (e) {
+        console.error("获取所有用户失败:", e);
+        this.showToast(`获取所有用户失败: ${e.statusCode === 401 ? '请先登录' : (e.data ? JSON.stringify(e.data) : e.errMsg || e.message)}`, 'error');
+      }
+    },
+    
+    /**
+     * @description 获取所有权限数据，用于角色表单中的权限选择器
+     */
+	async fetchAllPermissionsForPicker() {
+	  try {
+	    const res = await request("/permission/permissions/", "GET");
+	    this.availablePermissions = res;
+	  } catch (e) {
+	    console.error("获取所有权限失败:", e);
+	    this.showToast(`获取权限失败: ${e.message || e.errMsg}`, 'error');
+	  }
+	},
+    
+    /**
+     * @description 打开角色表单弹窗 (新增或编辑)
+     * @param {string} mode - 'create' 或 'edit'
+     * @param {object|null} group - 在编辑模式下传入的角色对象
+     */
+    openGroupForm(mode, group = null) {
+      this.groupFormMode = mode;
+      this.resetGroupFormData();
+
+      if (mode === 'edit' && group) {
+        this.groupFormData.id = group.id;
+        this.groupFormData.name = group.name;
+        if (group.users && group.users.length > 0) {
+          this.groupFormData.user_ids = group.users.map(u => u.id);
+        }
+		if (group.permissions && group.permissions.length > 0) {
+		  this.groupFormData.permission_ids = group.permissions.map(p => p.id);
+		}
+      }
+      this.$refs.groupPopup.open('center');
+    },
+
+    /**
+     * @description 关闭并重置角色表单
+     */
+    closeGroupPopup() {
+      this.$refs.groupPopup.close();
+      this.resetGroupFormData();
+    },
+
+    /**
+     * @description 重置角色表单数据
+     */
+    resetGroupFormData() {
+      this.groupFormData = {
+        id: null,
+        name: '',
+        user_ids: [],
+        permission_ids: []
+      };
+    },
+    
+    /**
+     * @description 提交角色表单（创建或更新）
+     */
+    async submitGroupForm() {
+      if (this.groupSubmitLoading) return;
+      this.groupSubmitLoading = true;
+
+      try {
+        const payload = { ...this.groupFormData };
+        payload.user_ids = payload.user_ids || [];
+        payload.permission_ids = payload.permission_ids || [];
+
+        if (this.groupFormMode === 'create') {
+          await request("/permission/groups/", "POST", payload);
+          this.showToast('角色创建成功', 'success');
+        } else {
+          await request(`/permission/groups/${payload.id}/`, "PATCH", payload);
+          this.showToast('角色更新成功', 'success');
+        }
+        this.closeGroupPopup();
+        this.fetchGroups();
+        this.fetchAllGroupsForPicker();
+      } catch (e) {
+        console.error("提交角色表单失败:", e);
+        this.showToast(`操作失败: ${e.data ? JSON.stringify(e.data) : e.errMsg || e.message}`, 'error');
+	  } finally {
+	    this.groupSubmitLoading = false;
+	  }
+    },
+
+    /**
+     * @description 删除角色
+     */
+    async deleteGroup(id) {
+      uni.showModal({
+        title: '提示',
+        content: '确定要删除此角色吗？',
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              await request(`/permission/groups/${id}/`, "DELETE");
+              this.showToast('角色删除成功', 'success');
+              this.fetchGroups();
+              this.fetchAllGroupsForPicker();
+            } catch (e) {
+              console.error("删除角色失败:", e);
+              this.showToast('删除角色失败', 'error');
+            }
+          }
+        }
+      });
+    },
+
+    // --- 多选组件相关方法 ---
+    /**
+     * @description 打开角色多选器
+     */
+    openRoleMultiPicker() {
+      this.$refs.roleMultiPicker.open();
+    },
+    
+    /**
+     * @description 打开用户多选器
+     */
+	openGroupUserMultiPicker() {
+	  this.$refs.groupUserMultiPicker.open();
+	},
+
+    /**
+     * @description 打开权限多选器
+     */
+	openGroupPermissionMultiPicker() {
+	  this.$refs.groupPermissionMultiPicker.open();
+	},
+	
+	/**
+     * @description 角色选择器值改变时的回调
+     */
+	onRoleMultiPickerChange(selectedIds) {
+	  if (!Array.isArray(selectedIds)) return;
+	  this.userFormData.groups_write = selectedIds.map(v => Number(v));
+	},
+    
+    /**
+     * @description 权限选择器值改变时的回调
+     */
+	onGroupPermissionMultiPickerChange(ids) {
+	  if (!Array.isArray(ids)) return;
+	  this.groupFormData.permission_ids = ids;
+	},
+    
+    /**
+     * @description 用户选择器值改变时的回调
+     */
+	onGroupUserMultiPickerChange(ids) {
+	  if (!Array.isArray(ids)) return;
+	  this.groupFormData.user_ids = ids;
+	},
+  },
+};
+</script>
+
+<style scoped>
+/* 页面容器 */
+.permission-container {
+  padding: 20px;
+  background-color: #fffaf6;
+  min-height: 100vh;
+}
+
+/* 顶部Tab */
+.header-tabs {
+  margin-bottom: 20px;
+}
+
+/* 模块内容区域 */
+.module-content {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+}
+
+/* 模块操作区域（如新增按钮） */
+.module-actions {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 新增按钮 */
+.add-btn {
+  background-color: #fea17a;
+  color: white;
+  border-radius: 4px;
+  padding: 8px 15px;
+  font-size: 14px;
+}
+.add-btn::after {
+  border: none;
+}
+
+/* 表格内操作按钮 */
+.action-btn {
+  margin: 0 5px;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: none;
+  color: white;
+}
+.action-btn::after {
+  border: none;
+}
+.edit-btn {
+  background-color: #3182ce; /* 蓝色 */
+}
+.delete-btn {
+  background-color: #e53e3e; /* 红色 */
+}
+
+/* 表格内字体样式 */
+.uni-table ::v-deep .uni-table-td {
+    vertical-align: middle;
+}
+
+.table-cell-content {
+    font-size: 14px;      /* 统一字体大小 */
+    color: #333333;        /* 统一字体颜色 */
+    line-height: 1.5;     /* 统一行高，改善多行文本的可读性 */
+    padding: 2px 0;       /* 给内容一点垂直内边距，看起来更舒服 */
+    text-align: center;   /* 确保文本水平居中 */
+}
+
+/* 弹窗内容 */
+.popup-content {
+  background-color: #fff;
+  width: 1100rpx;
+  max-width: 450px;
+  border-radius: 10px;
+  padding: 25px;
+  box-sizing: border-box;
+}
+
+/* 弹窗标题 */
+.popup-title {
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 25px;
+  color: #333;
+}
+
+/* 表单项 */
+.form-item {
+  display: flex;
+  flex-direction: row; /* 明确主轴方向为水平 */
+  align-items: center;
+  margin-bottom: 15px;
+}
+.form-item .label {
+  width: 100px;
+  flex-shrink: 0;
+  font-size: 15px;
+  color: #555;
+  text-align: left;
+  margin-right: 15px;
+}
+.form-item .input {
+  flex: 1;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #333;
+}
+.form-item .input:focus {
+  border-color: #fea17a;
+  box-shadow: 0 0 0 1px rgba(254, 161, 122, 0.5);
+}
+
+/* 选择器显示区域样式 */
+.picker-value-display {
+  flex: 1;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #333;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.picker-value-display:hover {
+  border-color: #fea17a;
+}
+
+/* 弹窗操作按钮区域 */
+.popup-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+  gap: 20px;
+}
+.cancel-btn,
+.submit-btn {
+  padding: 8px 25px;
+  border-radius: 5px;
+  font-size: 15px;
+}
+.cancel-btn {
+  background-color: #f0f0f0;
+  color: #666;
+  border: 1px solid #e0e0e0;
+}
+.cancel-btn::after {
+  border: none;
+}
+.submit-btn {
+  background-color: #fea17a;
+  color: white;
+  border: none;
+}
+.submit-btn::after {
+  border: none;
+}
+
+/* 权限标签样式 */
+.permission-tag {
+  display: inline-block;
+  margin: 2px 4px;
+  padding: 2px 6px;
+  background-color: #fea17a22;
+  border: 1px solid #fea17a;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #333;
+}
+
+
+</style>

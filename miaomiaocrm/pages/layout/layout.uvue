@@ -1,0 +1,202 @@
+<template>
+  <view class="layout">
+    <!-- 左侧菜单 -->
+    <view class="sidebar">
+      <view class="logo">喵喵CRM</view>
+      <view
+        v-for="item in menu"
+        :key="item.path"
+        :class="['menu-item', current === item.path ? 'active' : '']"
+        @click="navigate(item.path)"
+      >
+        <image :src="item.icon" class="menu-icon" />
+        <text class="menu-text">{{ item.name }}</text>
+      </view>
+    </view>
+
+    <!-- 右侧主区域 -->
+    <view class="main">
+      <!-- 自定义顶部栏 -->
+      <view class="header">
+        <text class="title">{{ currentTitle }}</text>
+        <view class="user-box">
+          <button class="logout" @click="handleLogout">登出</button>
+        </view>
+      </view>
+
+      <!-- 内容区 -->
+      <view class="content">
+        <slot />
+      </view>
+    </view>
+  </view>
+</template>
+
+<script lang="uts">
+export default {
+  data() {
+    return {
+      current: '/pages/home/home', // 默认选中首页
+      username: '测试用户',
+      menu: [
+        { name: '首页', path: '/pages/home/home', icon: '/static/home-icon.png' },
+        { name: '客户管理', path: '/pages/customer/customer', icon: '/static/customer.png' },
+        { name: '项目管理', path: '/pages/project/project', icon: '/static/project.png' },
+        { name: '权限管理', path: '/pages/permission/permission', icon: '/static/permission.png' }
+      ]
+    }
+  },
+  computed: {
+    currentTitle() {
+      const item = this.menu.find(m => m.path === this.current)
+      return item ? item.name : '未知页面' // 添加一个默认值
+    }
+  },
+  created() {
+    // 在组件创建时监听事件，更新当前路径
+    uni.$on('updateLayoutTitle', (path: string) => {
+      console.log('Received updateLayoutTitle event with path:', path);
+      this.current = path;
+    });
+    // 页面初次加载时，尝试获取当前路由来设置标题
+    // 确保在 created 生命周期中触发一次，防止刷新后标题丢失
+    try {
+        const pages = getCurrentPages();
+        if (pages && pages.length > 0) {
+            const route = '/' + (pages[pages.length - 1]).route;
+            this.current = route;
+        }
+    } catch (e) {
+        console.error('Failed to get initial route in layout:', e);
+    }
+  },
+  beforeDestroy() {
+    // 在组件销毁前移除事件监听，防止内存泄漏
+    uni.$off('updateLayoutTitle');
+  },
+  methods: {
+    navigate(path) {
+      if (this.current === path) return;
+      // 在这里我们不需要更新 this.current，因为它会通过事件总线来更新
+      uni.navigateTo({ url: path }); // 保持使用 uni.navigateTo 进行页面跳转
+    },
+    handleLogout() {
+      uni.reLaunch({ url: '/pages/login/login' });
+    }
+  }
+}
+</script>
+
+<style scoped>
+.layout {
+  display: flex;
+  height: 100vh;
+  background: #fff5ec;
+  flex-direction: row;
+}
+
+.sidebar {
+  width: 220px;
+  background: #fea17a;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+  border-radius: 20px;
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+  margin-right: 20px;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.menu-item {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  transition: all 0.3s;
+}
+
+.menu-item:hover {
+  background: #ffb08c;
+  transform: translateX(5px);
+}
+
+.menu-item.active {
+  background: #ff8c5a;
+  font-weight: bold;
+}
+
+.menu-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.menu-text {
+  font-size: 16px;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  height: 60px;
+  background: #fff0e2;
+  display: flex; /* 依然使用flex布局 */
+  justify-content: center; /* 确保标题本身能在flex容器中尝试居中 */
+  align-items: center;
+  padding: 0 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: relative; /* 关键：为user-box的绝对定位提供参考 */
+  /* flex-direction: row; 这行可以省略，因为它是flex的默认值 */
+}
+
+.title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.user-box {
+  display: flex;
+  align-items: center;
+  /* 关键：使用绝对定位将user-box精确放置到右侧 */
+  position: absolute; 
+  right: 20px; /* 距离header右侧20px */
+  top: 50%; /* 垂直居中 */
+  transform: translateY(-50%); /* 垂直居中微调 */
+}
+.username {
+  font-size: 14px;
+  color: #444;
+  margin-right: 10px;
+}
+
+.logout {
+  background: #fea17a;
+  color: white;
+  border: none;
+  padding: 5px 15px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+  background: #fffaf6;
+  overflow-y: auto;
+}
+</style>

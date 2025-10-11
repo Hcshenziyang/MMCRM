@@ -1,0 +1,413 @@
+<template>
+  <layout>
+    <view class="customer-container">
+      <view class="module-content">
+        <view class="module-actions">
+          <button class="add-btn" @click="openCustomerForm('create')">新增客户</button>
+        </view>
+        
+        <!-- 客户列表表格 -->
+        <uni-table :loading="customerLoading" border stripe emptyText="暂无客户数据">
+          <uni-tr>
+            <uni-th width="150" align="center">客户名称</uni-th>
+            <uni-th width="150" align="center">邮箱</uni-th>
+            <uni-th width="120" align="center">电话</uni-th>
+            <uni-th width="200" align="center">地址</uni-th>
+            <uni-th width="100" align="center">拥有者</uni-th>
+            <uni-th width="120" align="center">操作</uni-th>
+          </uni-tr>
+          <uni-tr v-for="(item, index) in customerList" :key="item.id">
+            <uni-td align="center"><view class="table-cell-content">{{ item.name }}</view></uni-td>
+            <uni-td align="center"><view class="table-cell-content">{{ item.email }}</view></uni-td>
+            <uni-td align="center"><view class="table-cell-content">{{ item.phone }}</view></uni-td>
+            <uni-td align="center"><view class="table-cell-content">{{ item.address }}</view></uni-td>
+            <uni-td align="center"><view class="table-cell-content">{{ item.owner }}</view></uni-td>
+            <uni-td align="center">
+              <button class="action-btn edit-btn" size="mini" @click="openCustomerForm('edit', item)">编辑</button>
+              <button class="action-btn delete-btn" size="mini" @click="deleteCustomer(item.id)">删除</button>
+            </uni-td>
+          </uni-tr>
+        </uni-table>
+      </view>
+
+      <!-- 客户新增/编辑弹窗 -->
+      <uni-popup ref="customerPopup" type="center" :mask-click="false">
+        <view class="popup-content">
+          <view class="popup-title">{{ customerFormMode === 'create' ? '新增客户' : '编辑客户' }}</view>
+          <form @submit="submitCustomerForm">
+            <view class="form-item">
+              <text class="label">客户名称:</text>
+              <input class="input" v-model="customerFormData.name" placeholder="请输入客户名称" required />
+            </view>
+            <view class="form-item">
+              <text class="label">电话:</text>
+              <input class="input" v-model="customerFormData.phone" type="text" placeholder="请输入联系电话" required />
+            </view>
+            <view class="form-item">
+              <text class="label">邮箱:</text>
+              <input class="input" v-model="customerFormData.email" type="email" placeholder="请输入邮箱" />
+            </view>
+            <view class="form-item">
+              <text class="label">地址:</text>
+              <input class="input" v-model="customerFormData.address" placeholder="请输入客户地址" />
+            </view>
+            <view class="popup-actions">
+              <button class="cancel-btn" @click="closeCustomerPopup">取消</button>
+              <button class="submit-btn" form-type="submit" :loading="customerSubmitLoading">提交</button>
+            </view>
+          </form>
+        </view>
+      </uni-popup>
+    </view>
+  </layout>
+</template>
+
+<script>
+// 基础和第三方组件导入
+import Layout from '../layout/layout.uvue';
+// 从修正后的 api.js 导入客户管理相关的 API
+import {
+  customer_view,
+  customer_create,
+  customer_update,
+  customer_del,
+} from '../../common/api.js';
+
+import UniTable from '../../uni_modules/uni-table/components/uni-table/uni-table.vue';
+import UniTr from '../../uni_modules/uni-table/components/uni-tr/uni-tr.vue';
+import UniTh from '../../uni_modules/uni-table/components/uni-th/uni-th.vue';
+import UniTd from '../../uni_modules/uni-table/components/uni-td/uni-td.vue';
+import UniPopup from '../../uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
+
+export default {
+  components: {
+    Layout,
+    UniTable,
+    UniTr,
+    UniTh,
+    UniTd,
+    UniPopup,
+  },
+  data() {
+    return {
+      customerList: [],              // 客户列表
+      customerLoading: false,        // 客户表格加载状态
+      customerSubmitLoading: false,  // 客户表单提交加载状态
+      customerFormMode: 'create',    // 客户表单模式: 'create' 或 'edit'
+      customerFormData: {            // 客户表单数据，仅包含可修改字段
+        name: '',
+        email: '',
+        phone: '',
+        address: '',
+        // 'owner', 'created_at', 'updated_at' 等字段是后端生成或管理的，不应在前端表单中直接修改
+      },
+    };
+  },
+  onLoad() {
+    // 页面加载时通知layout更新标题
+    uni.$emit('updateLayoutTitle', '/pages/customer/customer');
+    this.fetchCustomers();
+  },
+  methods: {
+    /**
+     * @description 格式化日期时间字符串
+     */
+    formatDateTime(dateTimeString) {
+      if (!dateTimeString) return 'N/A';
+      try {
+        const date = new Date(dateTimeString);
+        // 使用 toLocaleString 兼容不同环境，或者自定义格式
+        return date.toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false // 24小时制
+        });
+      } catch (e) {
+        console.error("日期格式化失败", e);
+        return dateTimeString; // 格式化失败则返回原始字符串
+      }
+    },
+
+    /**
+     * @description 显示Toast提示
+     */
+    async showToast(title, icon = 'none', duration = 1500) {
+      uni.showToast({ title, icon, duration });
+    },
+
+    /**
+     * @description 从API获取客户列表
+     */
+    async fetchCustomers() {
+      this.customerLoading = true;
+      try {
+        const res = await customer_view();
+        this.customerList = res;
+      } catch (e) {
+        console.error("获取客户列表失败:", e);
+        this.showToast(`获取客户列表失败: ${e.statusCode === 401 ? '请先登录' : (e.data ? JSON.stringify(e.data) : e.errMsg || e.message)}`, 'error');
+        if (e.statusCode === 401) {
+          uni.reLaunch({ url: '/pages/login/login' });
+        }
+      } finally {
+        this.customerLoading = false;
+      }
+    },
+
+    /**
+     * @description 打开客户表单弹窗 (新增或编辑)
+     * @param {string} mode - 'create' 或 'edit'
+     * @param {object|null} customer - 在编辑模式下传入的客户对象
+     */
+    openCustomerForm(mode, customer = null) {
+      this.customerFormMode = mode;
+      this.resetCustomerFormData(); // 重置表单数据
+
+      if (mode === 'edit' && customer) {
+        // 编辑模式下，只填充可修改字段
+        this.customerFormData.id = customer.id;
+        this.customerFormData.name = customer.name;
+        this.customerFormData.email = customer.email;
+        this.customerFormData.phone = customer.phone;
+        this.customerFormData.address = customer.address;
+      }
+      this.$refs.customerPopup.open('center');
+    },
+
+    /**
+     * @description 关闭并重置客户表单
+     */
+    closeCustomerPopup() {
+      this.$refs.customerPopup.close();
+      this.resetCustomerFormData();
+    },
+
+    /**
+     * @description 重置客户表单数据
+     */
+    resetCustomerFormData() {
+      this.customerFormData = {
+        id: null,
+        name: '',
+        email: '',
+        phone: '',
+        address: '',
+      };
+    },
+
+    /**
+     * @description 提交客户表单（创建或更新）
+     */
+    async submitCustomerForm() {
+      if (this.customerSubmitLoading) return;
+      this.customerSubmitLoading = true;
+
+      try {
+        // 构建仅包含可修改字段的 payload
+        const payload = {
+          name: this.customerFormData.name,
+          email: this.customerFormData.email,
+          phone: this.customerFormData.phone,
+          address: this.customerFormData.address,
+        };
+
+        if (this.customerFormMode === 'create') {
+          await customer_create(payload);
+          this.showToast('客户创建成功', 'success');
+        } else {
+          // 编辑模式下需要ID
+          await customer_update(this.customerFormData.id, payload);
+          this.showToast('客户更新成功', 'success');
+        }
+        this.closeCustomerPopup();
+        this.fetchCustomers(); // 刷新客户列表
+      } catch (e) {
+        console.error("提交客户表单失败:", e);
+        this.showToast(`操作失败: ${e.data ? JSON.stringify(e.data) : e.errMsg || e.message}`, 'error');
+      } finally {
+        this.customerSubmitLoading = false;
+      }
+    },
+
+    /**
+     * @description 删除客户
+     */
+    async deleteCustomer(id) {
+      uni.showModal({
+        title: '提示',
+        content: '确定要删除此客户吗？',
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              await customer_del(id);
+              this.showToast('客户删除成功', 'success');
+              this.fetchCustomers(); // 刷新客户列表
+            } catch (e) {
+              console.error("删除客户失败:", e);
+              this.showToast('删除客户失败', 'error');
+            }
+          }
+        }
+      });
+    },
+  },
+};
+</script>
+
+<style scoped>
+/* 页面容器 */
+.customer-container {
+  padding: 20px;
+  background-color: #fffaf6;
+  min-height: 100vh;
+}
+
+/* 模块内容区域 */
+.module-content {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+}
+
+/* 模块操作区域（如新增按钮） */
+.module-actions {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 新增按钮 */
+.add-btn {
+  background-color: #fea17a;
+  color: white;
+  border-radius: 4px;
+  padding: 8px 15px;
+  font-size: 14px;
+}
+.add-btn::after {
+  border: none;
+}
+
+/* 表格内操作按钮 */
+.action-btn {
+  margin: 0 5px;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: none;
+  color: white;
+}
+.action-btn::after {
+  border: none;
+}
+.edit-btn {
+  background-color: #3182ce; /* 蓝色 */
+}
+.delete-btn {
+  background-color: #e53e3e; /* 红色 */
+}
+
+/* 表格内字体样式 */
+.uni-table ::v-deep .uni-table-td {
+    vertical-align: middle;
+}
+
+.table-cell-content {
+    font-size: 14px;      /* 统一字体大小 */
+    color: #333333;        /* 统一字体颜色 */
+    line-height: 1.5;     /* 统一行高，改善多行文本的可读性 */
+    padding: 2px 0;       /* 给内容一点垂直内边距，看起来更舒服 */
+    text-align: center;   /* 确保文本水平居中 */
+    word-break: break-all; /* 防止长文本溢出 */
+}
+
+/* 弹窗内容 */
+.popup-content {
+  background-color: #fff;
+  width: 1100rpx;
+  max-width: 450px;
+  border-radius: 10px;
+  padding: 25px;
+  box-sizing: border-box;
+}
+
+/* 弹窗标题 */
+.popup-title {
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 25px;
+  color: #333;
+}
+
+/* 表单项 */
+.form-item {
+  display: flex;
+  flex-direction: row; /* 明确主轴方向为水平 */
+  align-items: center;
+  margin-bottom: 15px;
+}
+.form-item .label {
+  width: 100px;
+  flex-shrink: 0;
+  font-size: 15px;
+  color: #555;
+  text-align: left;
+  margin-right: 15px;
+}
+.form-item .input,
+.form-item .textarea {
+  flex: 1;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #333;
+  min-height: 32px; /* 确保input和textarea有最小高度 */
+  box-sizing: border-box;
+}
+.form-item .textarea {
+  min-height: 80px; /* textarea默认更高一些 */
+  resize: vertical; /* 允许垂直方向调整大小 */
+}
+.form-item .input:focus,
+.form-item .textarea:focus {
+  border-color: #fea17a;
+  box-shadow: 0 0 0 1px rgba(254, 161, 122, 0.5);
+}
+
+/* 弹窗操作按钮区域 */
+.popup-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+  gap: 20px;
+}
+.cancel-btn,
+.submit-btn {
+  padding: 8px 25px;
+  border-radius: 5px;
+  font-size: 15px;
+}
+.cancel-btn {
+  background-color: #f0f0f0;
+  color: #666;
+  border: 1px solid #e0e0e0;
+}
+.cancel-btn::after {
+  border: none;
+}
+.submit-btn {
+  background-color: #fea17a;
+  color: white;
+  border: none;
+}
+.submit-btn::after {
+  border: none;
+}
+</style>
