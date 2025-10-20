@@ -11,20 +11,58 @@ import openpyxl
 from openpyxl.utils import get_column_letter
 from django.http import HttpResponse
 from rest_framework.decorators import action
+from django.core.cache import cache  # 引入cache
+import json
+import hashlib
+from rest_framework.pagination import PageNumberPagination
+
+
+class CustomerPagination(PageNumberPagination):
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class CustomersSet(viewsets.ModelViewSet):
     serializer_class = CustomerSerializer
+    pagination_class = CustomerPagination
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ["name", "email", "phone", "address"]
     ordering_fields = ["created_at", "updated_at", "name"]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Customer.objects.filter(owner=self.request.user)  # 只返回当前用户
+        return Customer.objects.filter(owner=self.request.user).select_related('owner')
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        """
+        重写 list 方法，加入缓存逻辑
+        """
+        # 获取客户数据版本号
+        version_key = 'crm:customers:version'
+        version = cache.get(version_key, 1)  # 默认版本为1
+
+        # 构造动态且唯一的缓存键
+        query_params_str = json.dumps(sorted(request.query_params.items()))
+        query_hash = hashlib.md5(query_params_str.encode('utf-8')).hexdigest()
+
+        cache_key = f"crm:customers:list:u{request.user.id}:v{version}:{query_hash}"
+
+        # 尝试从缓存获取数据
+        cached_response_data = cache.get(cache_key)
+        if cached_response_data:
+            return Response(cached_response_data)
+
+        # 缓存未命中，执行原始的查询和序列化逻辑
+        response = super().list(request, *args, **kwargs)
+
+        # 将返回结果的数据部分写入缓存
+        cache.set(cache_key, response.data, timeout=3600)  # 设置TTL为1h
+        print(f"写入缓存成功。Key: {cache_key}")
+
+        return response
 
     @action(detail=False, methods=['post'])
     def import_excel(self, request):

@@ -20,6 +20,7 @@
   </view>
 </template>
 
+
 <script>
 import { login } from '../../common/api.js'; // 假设你的 api.js 文件路径正确
 
@@ -31,25 +32,27 @@ export default {
     };
   },
   methods: {
-	async handleLogin() {
-	  const data = { username: this.username, password: this.password };
-	  try {
-	    const res = await login(data); // 接入后端的时候再解开
-		console.log('Login successful')
-		await uni.reLaunch({ url: '/pages/home/home' }) // 加上 await
-	  } catch (err) {
-	    console.error('Login failed', err);
-	  }
-	},
-	
+    async handleLogin() {
+      const data = { username: this.username, password: this.password };
+      try {
+        const res = await login(data); // 接入后端的时候再解开
+        console.log('Login successful');
+        await uni.reLaunch({ url: '/pages/home/home' }); // 加上 await
+      } catch (err) {
+        console.error('Login failed', err);
+      }
+    },
+
     handleRegister() {
-      // uni.navigateTo({ url: '/pages/login/login' }); // 跳转到注册页面
-      console.log('Navigating to register page');
+      uni.showModal({
+        title: '提示',
+        content: '很抱歉！暂不公开注册！\n测试账号：13989\n测试密码：was13579',
+        showCancel: false,
+        confirmText: '我知道了'
+      });
     }
-  },
+  }
 };
-
-
 </script>
 
 

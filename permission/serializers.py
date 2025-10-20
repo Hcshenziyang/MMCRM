@@ -18,6 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
     groups_read = SimpleGroupSerializer(many=True, read_only=True, source='groups')
     groups_write = serializers.PrimaryKeyRelatedField(many=True, queryset=Group.objects.all(), write_only=True, required=False)
 
+
     class Meta:
         model = User
         fields = ['id', 'username', 'password', 'email', 'first_name', 'last_name', 'groups_read', 'groups_write']

@@ -6,7 +6,7 @@ from .models import ProjectStage, Project, Activity
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ['id', 'name', 'owner', 'current_stage',
+        fields = ['id', 'name', 'customer', 'owner', 'current_stage',
                   'source', 'description', 'expected_revenue', 'expected_close_date',
                    'actual_revenue', 'actual_close_date', 'created_at', 'updated_at']
 

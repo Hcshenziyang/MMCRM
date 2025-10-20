@@ -9,7 +9,6 @@
         :class="['menu-item', current === item.path ? 'active' : '']"
         @click="navigate(item.path)"
       >
-        <image :src="item.icon" class="menu-icon" />
         <text class="menu-text">{{ item.name }}</text>
       </view>
     </view>
@@ -107,15 +106,18 @@ export default {
   margin-right: 20px;
 }
 
-.logo {
-  font-size: 22px;
-  font-weight: bold;
-  text-align: center;
-  margin-bottom: 30px;
-}
 
+.logo {
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 1px;
+  color: #ffffff;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 36px;
+}
 .menu-item {
-  padding: 12px 20px;
+  padding: 30px 20px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -142,6 +144,8 @@ export default {
 
 .menu-text {
   font-size: 16px;
+  display: flex;
+  align-items: center;
 }
 
 .main {

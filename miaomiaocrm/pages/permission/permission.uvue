@@ -19,8 +19,14 @@
         </view>
 	
         <uni-table :loading="userLoading" border stripe emptyText="暂无用户数据">
+          <uni-tr>
+            <uni-th width="150" align="center">用户</uni-th>
+            <uni-th width="120" align="center">邮箱</uni-th>
+            <uni-th width="200" align="center">角色</uni-th>
+			<uni-th width="200" align="center">姓名</uni-th>
+            <uni-th width="120" align="center">操作</uni-th>
+          </uni-tr>
           <uni-tr v-for="(item, index) in userList" :key="item.id">
-            <uni-td align="center"><view class="table-cell-content">{{ item.id }}</view></uni-td>
             <uni-td align="center"><view class="table-cell-content">{{ item.username }}</view></uni-td>
             <uni-td align="center"><view class="table-cell-content">{{ item.email }}</view></uni-td>
             <uni-td align="center">
@@ -44,8 +50,13 @@
         </view>
 
         <uni-table :loading="groupLoading" border stripe emptyText="暂无角色数据">
+		  <uni-tr>
+		    <uni-th width="120" align="center">角色</uni-th>
+		    <uni-th width="120" align="center">用户</uni-th>
+		    <uni-th width="200" align="center">权限</uni-th>
+		    <uni-th width="120" align="center">操作</uni-th>
+		  </uni-tr>
           <uni-tr v-for="(item, index) in groupList" :key="item.id">
-            <uni-td align="center"><view class="table-cell-content">{{ item.id }}</view></uni-td>
             <uni-td align="center"><view class="table-cell-content">{{ item.name }}</view></uni-td>
 			
 			<uni-td align="center">
@@ -662,6 +673,7 @@ export default {
 .module-actions {
   margin-bottom: 20px;
   display: flex;
+  flex-direction: row; /* 明确主轴方向为水平 */
   justify-content: flex-end;
 }
 
@@ -670,7 +682,7 @@ export default {
   background-color: #fea17a;
   color: white;
   border-radius: 4px;
-  padding: 8px 15px;
+  padding: 0px 10px;
   font-size: 14px;
 }
 .add-btn::after {

@@ -2,22 +2,32 @@
 import request from './request.js';
 import { setTokens, clearTokens } from './auth.js';
 
-// 登录（免鉴权）
+// --- 认证模块 ---
+
+/**
+ * @description 登录（免鉴权）
+ */
 export async function login(data) {
   const res = await request("/login/", "POST", data, {}, { authFree: true });
   // 兼容不同字段名
   const access = res.access || res.token || res.access_token;
   const refresh = res.refresh || res.refresh_token;
-  if (access) setTokens({ access, refresh });
+  if (access) {
+    setTokens({ access, refresh });
+  }
   return res;
 }
 
-// 注册（免鉴权）
+/**
+ * @description 注册（免鉴权）
+ */
 export function register(data) {
   return request("/register/", "POST", data, {}, { authFree: true });
 }
 
-// 登出（带鉴权，且清除本地态）
+/**
+ * @description 登出（带鉴权，并清除本地 Token）
+ */
 export async function logout() {
   try {
     await request("/logout/", "POST");
@@ -26,66 +36,113 @@ export async function logout() {
   }
 }
 
-// 用户增删改查
-export async function user_view(data) { // data参数用于查询条件、分页等
-  return await request("/permission/users/", "GET", data);
+// --- 用户管理 (Users) ---
+
+export function user_view(data) { // data 参数用于查询条件、分页等
+  return request("/permission/users/", "GET", data);
 }
 
-export async function user_create(data) {
-  return await request("/permission/users/", "POST", data);
+export function user_create(data) {
+  return request("/permission/users/", "POST", data);
 }
 
-export async function user_view_id(userId) {
-  return await request(`/permission/users/${userId}/`, "GET");
+export function user_view_id(userId) {
+  return request(`/permission/users/${userId}/`, "GET");
 }
 
-export async function user_update(userId, data) {
-  return await request(`/permission/users/${userId}/`, "PATCH", data);
+export function user_update(userId, data) {
+  return request(`/permission/users/${userId}/`, "PATCH", data);
 }
 
-export async function user_del(userId) {
-  return await request(`/permission/users/${userId}/`, "DELETE");
+export function user_del(userId) {
+  return request(`/permission/users/${userId}/`, "DELETE");
 }
 
-// 角色（组）增删改查
-// 展示完整角色+用户+权限
-export async function groups_view(data) { // data参数用于查询条件、分页等
-  return await request("/permission/groups/", "GET", data);
+// --- 角色/组管理 (Groups) ---
+
+export function groups_view(data) { // data 参数用于查询条件、分页等
+  return request("/permission/groups/", "GET", data);
 }
 
-export async function groups_create(data) {
-  return await request("/permission/groups/", "POST", data);
+export function groups_create(data) {
+  return request("/permission/groups/", "POST", data);
 }
 
-export async function groups_view_id(groupId) { // 注意这里命名为 groupId 更规范
-  return await request(`/permission/groups/${groupId}/`, "GET");
+export function groups_view_id(groupId) {
+  return request(`/permission/groups/${groupId}/`, "GET");
 }
 
-export async function groups_update(groupId, data) {
-  return await request(`/permission/groups/${groupId}/`, "PATCH", data);
+export function groups_update(groupId, data) {
+  return request(`/permission/groups/${groupId}/`, "PATCH", data);
 }
 
-export async function groups_del(groupId) {
-  return await request(`/permission/groups/${groupId}/`, "DELETE");
+export function groups_del(groupId) {
+  return request(`/permission/groups/${groupId}/`, "DELETE");
 }
 
-// 客户增删改查
-export async function customer_view(data) {
-  return await request(`/customer/customers/`, "GET", data);
+// --- 客户管理 (Customers) ---
+
+export function customer_view(data) {
+  return request(`/customer/customers/`, "GET", data);
 }
 
-export async function customer_create(data) {
-  return await request("/customer/customers/", "POST", data);
+export function customer_create(data) {
+  return request("/customer/customers/", "POST", data);
 }
 
-export async function customer_view_id(customerId) {
-  return await request(`/customer/customers/${customerId}/`, "GET");
+export function customer_view_id(customerId) {
+  return request(`/customer/customers/${customerId}/`, "GET");
 }
 
-export async function customer_update(customerId, data) {
-  return await request(`/customer/customers/${customerId}/`, "PATCH", data);
+export function customer_update(customerId, data) {
+  return request(`/customer/customers/${customerId}/`, "PATCH", data);
 }
 
-export async function customer_del(customerId) {
-  return await request(`/customer/customers/${customerId}/`, "DELETE");
+export function customer_del(customerId) {
+  return request(`/customer/customers/${customerId}/`, "DELETE");
+}
+
+
+// --- 项目管理 (Projects) ---
+
+export function project_view(data) {
+  return request(`/project/projects/`, "GET", data);
+}
+
+export function project_create(data) {
+  return request("/project/projects/", "POST", data);
+}
+
+export function project_view_id(projectId) {
+  return request(`/project/projects/${projectId}/`, "GET");
+}
+
+export function project_update(projectId, data) {
+  return request(`/project/projects/${projectId}/`, "PATCH", data);
+}
+
+export function project_del(projectId) {
+  return request(`/project/projects/${projectId}/`, "DELETE");
+}
+
+// --- 行动记录 (Activities) ---
+
+export function activity_view(data) {
+  return request(`/project/activities/`, "GET", data);
+}
+
+export function activity_create(data) {
+  return request("/project/activities/", "POST", data);
+}
+
+export function activity_view_id(activityId) {
+  return request(`/project/activities/${activityId}/`, "GET");
+}
+
+export function activity_update(activityId, data) {
+  return request(`/project/activities/${activityId}/`, "PATCH", data);
+}
+
+export function activity_del(activityId) {
+  return request(`/project/activities/${activityId}/`, "DELETE");
 }

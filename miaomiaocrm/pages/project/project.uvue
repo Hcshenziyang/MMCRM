@@ -1,26 +1,541 @@
 <template>
-	<!-- #ifdef APP -->
-	<scroll-view style="flex:1">
-	<!-- #endif -->
-		
-	<!-- #ifdef APP -->
-	</scroll-view>
-	<!-- #endif -->
+  <layout>
+    <view class="project-container">
+      <view class="header-tabs">
+        <uni-segmented-control
+          :current="currentSegment"
+          :values="['项目管理', '行动记录']"
+          @clickItem="onClickSegment"
+          style-type="button"
+          active-color="#fea17a"
+        ></uni-segmented-control>
+      </view>
+
+      <view v-if="currentSegment === 0" class="module-content">
+        <view class="module-actions">
+          <button class="add-btn" @click="openProjectForm('create')">新增项目</button>
+        </view>
+	
+        <uni-table :loading="projectLoading" border stripe emptyText="暂无项目数据">
+          <uni-tr>
+            <uni-th align="center">项目名称</uni-th>
+            <uni-th align="center">关联客户</uni-th>
+            <uni-th align="center">负责人</uni-th>
+            <uni-th align="center">当前阶段</uni-th>
+            <uni-th align="center">预估销售额</uni-th>
+            <uni-th align="center">预计成交</uni-th>
+            <uni-th align="center" width="150">操作</uni-th>
+          </uni-tr>
+          <uni-tr v-for="item in projectList" :key="item.id">
+            <uni-td align="center">{{ item.name }}</uni-td>
+            <uni-td align="center">{{ getCustomerName(item.customer) }}</uni-td>
+            <uni-td align="center">{{ getOwnerName(item.owner) }}</uni-td>
+            <uni-td align="center">{{ getStageName(item.current_stage) }}</uni-td>
+            <uni-td align="center">{{ item.expected_revenue }}</uni-td>
+            <uni-td align="center">{{ item.expected_close_date }}</uni-td>
+            <uni-td align="center">
+              <button class="action-btn edit-btn" size="mini" @click="openProjectForm('edit', item)">编辑</button>
+              <button class="action-btn delete-btn" size="mini" @click="deleteProject(item.id)">删除</button>
+            </uni-td>
+          </uni-tr>
+        </uni-table>
+      </view>
+
+      <view v-else-if="currentSegment === 1" class="module-content">
+        <view class="module-actions">
+          <button class="add-btn" @click="openActivityForm('create')">新增行动记录</button>
+        </view>
+
+        <uni-table :loading="activityLoading" border stripe emptyText="暂无行动记录">
+          <uni-tr>
+            <uni-th align="center">关联项目</uni-th>
+            <uni-th align="center">行动类型</uni-th>
+            <uni-th align="center">行动详情</uni-th>
+            <uni-th align="center">行动日期</uni-th>
+            <uni-th align="center">创建人</uni-th>
+            <uni-th align="center" width="150">操作</uni-th>
+          </uni-tr>
+          <uni-tr v-for="item in activityList" :key="item.id">
+            <uni-td align="center">{{ getProjectName(item.project) }}</uni-td>
+            <uni-td align="center">{{ getActivityTypeName(item.activity_type) }}</uni-td>
+            <uni-td align="center">{{ item.description }}</uni-td>
+            <uni-td align="center">{{ item.activity_date.split('T')[0] }}</uni-td>
+            <uni-td align="center">{{ getOwnerName(item.created_by) }}</uni-td>
+            <uni-td align="center">
+              <button class="action-btn edit-btn" size="mini" @click="openActivityForm('edit', item)">编辑</button>
+              <button class="action-btn delete-btn" size="mini" @click="deleteActivity(item.id)">删除</button>
+            </uni-td>
+          </uni-tr>
+        </uni-table>
+      </view>
+
+      <uni-popup ref="projectPopup" type="center" :mask-click="false">
+        <view class="popup-content">
+          <view class="popup-title">{{ projectFormMode === 'create' ? '新增项目' : '编辑项目' }}</view>
+          <form @submit="submitProjectForm">
+            <view class="form-item">
+              <text class="label">项目名称:</text>
+              <input class="input" v-model="projectFormData.name" placeholder="请输入项目名称" required />
+            </view>
+            <view class="form-item">
+              <text class="label">关联客户:</text>
+              <input class="input" v-model="projectFormData.customer" placeholder="请输入客户ID" required />
+            </view>
+            <view class="form-item">
+              <text class="label">项目负责人:</text>
+              <input class="input" v-model="projectFormData.owner" placeholder="请输入负责人ID" />
+            </view>
+            <view class="form-item">
+              <text class="label">当前阶段:</text>
+              <input class="input" v-model="projectFormData.current_stage" placeholder="请输入阶段ID" required />
+            </view>
+             <view class="form-item">
+                <text class="label">线索来源:</text>
+                <input class="input" v-model="projectFormData.source" placeholder="请输入来源" />
+            </view>
+            <view class="form-item">
+              <text class="label">项目描述:</text>
+              <input class="input" v-model="projectFormData.description" placeholder="请输入项目描述" />
+            </view>
+            <view class="form-item">
+              <text class="label">预估销售额:</text>
+              <input class="input" type="number" v-model="projectFormData.expected_revenue" placeholder="请输入预估销售额" />
+            </view>
+            <view class="form-item">
+              <text class="label">预计成交日:</text>
+              <input class="input" v-model="projectFormData.expected_close_date" placeholder="格式: YYYY-MM-DD" />
+            </view>
+            <view class="popup-actions">
+              <button class="cancel-btn" @click="closeProjectPopup">取消</button>
+              <button class="submit-btn" form-type="submit" :loading="projectSubmitLoading">提交</button>
+            </view>
+          </form>
+        </view>
+      </uni-popup>
+
+      <uni-popup ref="activityPopup" type="center" :mask-click="false">
+        <view class="popup-content">
+          <view class="popup-title">{{ activityFormMode === 'create' ? '新增行动记录' : '编辑行动记录' }}</view>
+          <form @submit="submitActivityForm">
+            <view class="form-item">
+              <text class="label">关联项目:</text>
+              <input class="input" v-model="activityFormData.project" placeholder="请输入项目ID" required />
+            </view>
+            <view class="form-item">
+                <text class="label">行动类型:</text>
+                <input class="input" v-model="activityFormData.activity_type" placeholder="请输入行动类型" required/>
+            </view>
+            <view class="form-item">
+              <text class="label">行动详情:</text>
+              <input class="input" v-model="activityFormData.description" placeholder="请输入详情" required />
+            </view>
+            <view class="form-item">
+              <text class="label">行动日期:</text>
+               <input class="input" v-model="activityFormData.activity_date" placeholder="格式: YYYY-MM-DDTHH:MM:SS" required />
+            </view>
+            <view class="popup-actions">
+              <button class="cancel-btn" @click="closeActivityPopup">取消</button>
+              <button class="submit-btn" form-type="submit" :loading="activitySubmitLoading">提交</button>
+            </view>
+          </form>
+        </view>
+      </uni-popup>
+    </view>
+  </layout>
 </template>
 
 <script>
-	export default {
-		data() {
-			return {
-				
-			}
-		},
-		methods: {
-			
-		}
-	}
+// API函数导入 (假设已封装在api.js中)
+import { 
+  project_view, project_create, project_update, project_del,
+  activity_view, activity_create, activity_update, activity_del 
+} from '@/common/api.js'; 
+// 基础组件
+import Layout from '../layout/layout.uvue';
+import UniSegmentedControl from '../../uni_modules/uni-segmented-control/components/uni-segmented-control/uni-segmented-control.vue';
+import UniTable from '../../uni_modules/uni-table/components/uni-table/uni-table.vue';
+import UniTr from '../../uni_modules/uni-table/components/uni-tr/uni-tr.vue';
+import UniTh from '../../uni_modules/uni-table/components/uni-th/uni-th.vue';
+import UniTd from '../../uni_modules/uni-table/components/uni-td/uni-td.vue';
+import UniPopup from '../../uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
+
+export default {
+  components: {
+    Layout,
+    UniSegmentedControl,
+    UniTable,
+    UniTr,
+    UniTh,
+    UniTd,
+    UniPopup,
+  },
+  data() {
+    return {
+      currentSegment: 0, 
+
+      // --- 项目管理模块数据 ---
+      projectList: [],
+      projectLoading: false,
+      projectSubmitLoading: false,
+      projectFormMode: 'create',
+      projectFormData: {
+        id: null, name: '', customer: null, owner: null, current_stage: null,
+        source: '', description: '', expected_revenue: null, expected_close_date: null
+      },
+
+      // --- 行动记录模块数据 ---
+      activityList: [],
+      activityLoading: false,
+      activitySubmitLoading: false,
+      activityFormMode: 'create',
+      activityFormData: {
+        id: null, project: null, activity_type: '', description: '', activity_date: null
+      },
+
+      // --- 用于辅助显示的数据 (实际项目中应从API获取) ---
+      customerData: [{id: 1, name: '示例客户A'}],
+      userData: [{id: 1, name: '销售小王'}],
+      stageData: [{id: 1, name: '初步接洽'}],
+      projectDataForMapping: [],
+      activityTypeMap: { 'call': '电话', 'visit': '拜访', 'email': '邮件', 'meeting': '会议', 'demo': '产品演示', 'proposal': '提交方案', 'other': '其他' }
+    };
+  },
+  onLoad() {
+    this.fetchProjects();
+    // 实际项目中应在此处获取客户、用户、阶段等用于选择器和名称映射的数据
+    // this.fetchCustomersForPicker();
+    // this.fetchUsersForPicker();
+    // this.fetchStagesForPicker();
+  },
+  methods: {
+    // --- 通用方法 ---
+    onClickSegment(e) {
+      if (this.currentSegment !== e.currentIndex) {
+        this.currentSegment = e.currentIndex;
+        if (this.currentSegment === 0) {
+          this.fetchProjects();
+        } else {
+          this.fetchActivities();
+        }
+      }
+    },
+	
+    showToast(title, icon = 'none', duration = 1500) {
+      uni.showToast({ title, icon, duration });
+    },
+
+    // --- 项目管理 ---
+    async fetchProjects() {
+      this.projectLoading = true;
+      try {
+        this.projectList = await project_view();
+        this.projectDataForMapping = this.projectList; // 保存一份用于名称映射
+      } catch (e) {
+        this.showToast('获取项目列表失败', 'error');
+      } finally {
+        this.projectLoading = false;
+      }
+    },
+    
+    openProjectForm(mode, item = null) {
+      this.projectFormMode = mode;
+      this.resetProjectFormData();
+      if (mode === 'edit' && item) {
+        this.projectFormData = { ...item };
+      }
+      this.$refs.projectPopup.open('center');
+    },
+    
+    closeProjectPopup() {
+      this.$refs.projectPopup.close();
+      this.resetProjectFormData();
+    },
+    
+    resetProjectFormData() {
+      this.projectFormData = {
+        id: null, name: '', customer: null, owner: null, current_stage: null,
+        source: '', description: '', expected_revenue: null, expected_close_date: null
+      };
+    },
+    
+    async submitProjectForm() {
+      this.projectSubmitLoading = true;
+      try {
+        const payload = { ...this.projectFormData };
+        // 清理空值
+        Object.keys(payload).forEach(key => {
+            if (payload[key] === null || payload[key] === '') {
+                delete payload[key];
+            }
+        });
+
+        if (this.projectFormMode === 'create') {
+          await project_create(payload);
+          this.showToast('项目创建成功', 'success');
+        } else {
+          await project_update(payload.id, payload);
+          this.showToast('项目更新成功', 'success');
+        }
+        this.closeProjectPopup();
+        this.fetchProjects();
+      } catch (e) {
+        this.showToast(`操作失败: ${JSON.stringify(e.data || e.message)}`, 'error');
+      } finally {
+        this.projectSubmitLoading = false;
+      }
+    },
+
+    deleteProject(id) {
+      uni.showModal({
+        title: '提示', content: '确定要删除此项目吗？',
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              await project_del(id);
+              this.showToast('项目删除成功', 'success');
+              this.fetchProjects();
+            } catch (e) {
+              this.showToast('删除项目失败', 'error');
+            }
+          }
+        }
+      });
+    },
+
+    // --- 行动记录管理 ---
+    async fetchActivities() {
+      this.activityLoading = true;
+      try {
+        this.activityList = await activity_view();
+        // 如果项目列表未加载，则加载它用于名称映射
+        if(this.projectDataForMapping.length === 0){
+            await this.fetchProjects();
+        }
+      } catch (e) {
+        this.showToast('获取行动记录失败', 'error');
+      } finally {
+        this.activityLoading = false;
+      }
+    },
+
+    openActivityForm(mode, item = null) {
+      this.activityFormMode = mode;
+      this.resetActivityFormData();
+      if (mode === 'edit' && item) {
+        this.activityFormData = { ...item };
+      }
+      this.$refs.activityPopup.open('center');
+    },
+
+    closeActivityPopup() {
+      this.$refs.activityPopup.close();
+      this.resetActivityFormData();
+    },
+
+    resetActivityFormData() {
+      this.activityFormData = {
+        id: null, project: null, activity_type: '', description: '', activity_date: null
+      };
+    },
+    
+    async submitActivityForm() {
+      this.activitySubmitLoading = true;
+      try {
+        const payload = { ...this.activityFormData };
+        if (this.activityFormMode === 'create') {
+          await activity_create(payload);
+          this.showToast('行动记录创建成功', 'success');
+        } else {
+          await activity_update(payload.id, payload);
+          this.showToast('行动记录更新成功', 'success');
+        }
+        this.closeActivityPopup();
+        this.fetchActivities();
+      } catch (e) {
+        this.showToast(`操作失败: ${JSON.stringify(e.data || e.message)}`, 'error');
+      } finally {
+        this.activitySubmitLoading = false;
+      }
+    },
+
+    deleteActivity(id) {
+      uni.showModal({
+        title: '提示', content: '确定要删除此行动记录吗？',
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              await activity_del(id);
+              this.showToast('删除成功', 'success');
+              this.fetchActivities();
+            } catch (e) {
+              this.showToast('删除失败', 'error');
+            }
+          }
+        }
+      });
+    },
+    
+    // --- 名称映射方法 (辅助显示) ---
+    getCustomerName(id) {
+        const customer = this.customerData.find(c => c.id === id);
+        return customer ? customer.name : `ID: ${id}`;
+    },
+    getOwnerName(id) {
+        const user = this.userData.find(u => u.id === id);
+        return user ? user.name : `ID: ${id}`;
+    },
+    getStageName(id) {
+        const stage = this.stageData.find(s => s.id === id);
+        return stage ? stage.name : `ID: ${id}`;
+    },
+    getProjectName(id) {
+        const project = this.projectDataForMapping.find(p => p.id === id);
+        return project ? project.name : `ID: ${id}`;
+    },
+    getActivityTypeName(key) {
+        return this.activityTypeMap[key] || key;
+    }
+  },
+};
 </script>
 
-<style>
+<style scoped>
+/* 页面容器 */
+.project-container {
+  padding: 20px;
+  background-color: #fffaf6;
+  min-height: 100vh;
+}
 
+/* 顶部Tab */
+.header-tabs {
+  margin-bottom: 20px;
+}
+
+/* 模块内容区域 */
+.module-content {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+}
+
+/* 模块操作区域（如新增按钮） */
+.module-actions {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: row; /* 明确主轴方向为水平 */
+  justify-content: flex-end;
+}
+
+/* 新增按钮 */
+.add-btn {
+  background-color: #fea17a;
+  color: white;
+  border-radius: 4px;
+  padding: 0px 10px;
+  font-size: 14px;
+}
+.add-btn::after {
+  border: none;
+}
+
+/* 表格内操作按钮 */
+.action-btn {
+  margin: 0 5px;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: none;
+  color: white;
+}
+.action-btn::after {
+  border: none;
+}
+.edit-btn {
+  background-color: #3182ce;
+}
+.delete-btn {
+  background-color: #e53e3e;
+}
+
+/* 表格内字体样式 */
+.uni-table ::v-deep .uni-table-td {
+    vertical-align: middle;
+}
+
+/* 弹窗内容 */
+.popup-content {
+  background-color: #fff;
+  width: 1100rpx;
+  max-width: 450px;
+  border-radius: 10px;
+  padding: 25px;
+  box-sizing: border-box;
+}
+
+/* 弹窗标题 */
+.popup-title {
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 25px;
+  color: #333;
+}
+
+/* 表单项 */
+.form-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.form-item .label {
+  width: 100px;
+  flex-shrink: 0;
+  font-size: 15px;
+  color: #555;
+  text-align: left;
+  margin-right: 15px;
+}
+.form-item .input {
+  flex: 1;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #333;
+}
+.form-item .input:focus {
+  border-color: #fea17a;
+}
+
+/* 弹窗操作按钮区域 */
+.popup-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+  gap: 20px;
+}
+.cancel-btn,
+.submit-btn {
+  padding: 8px 25px;
+  border-radius: 5px;
+  font-size: 15px;
+}
+.cancel-btn {
+  background-color: #f0f0f0;
+  color: #666;
+  border: 1px solid #e0e0e0;
+}
+.cancel-btn::after {
+  border: none;
+}
+.submit-btn {
+  background-color: #fea17a;
+  color: white;
+  border: none;
+}
+.submit-btn::after {
+  border: none;
+}
 </style>
