@@ -146,3 +146,10 @@ export function activity_update(activityId, data) {
 export function activity_del(activityId) {
   return request(`/project/activities/${activityId}/`, "DELETE");
 }
+
+// --- 项目阶段 (ProjectStage) ---
+
+export function stage_view(data) {
+  return request(`/project/stages/`, "GET", data);
+}
+

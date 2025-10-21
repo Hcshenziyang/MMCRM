@@ -4,9 +4,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
-
-from .models import Project, Activity
-from .serializers import ProjectSerializer, ActivitySerializer
+from rest_framework.permissions import IsAuthenticated
+from mycrm.permissions import CachedModelPermissions
+from .models import Project, Activity, ProjectStage
+from .serializers import ProjectSerializer, ActivitySerializer, ProjectStageSerializer
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
@@ -20,42 +21,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'customer__name']
     ordering_fields = ['created_at', 'expected_close_date', 'actual_close_date']
     ordering = ['-created_at']
+    permission_classes = [IsAuthenticated, CachedModelPermissions]
+    def get_queryset(self):
+        return Project.objects.filter(owner=self.request.user).select_related('owner')
 
-    # @action(detail=True, methods=["post"])
-    # def move_stage(self, request, pk=None):
-    #     """
-    #     自定义动作：修改项目阶段
-    #     POST /projects/{id}/move_stage/
-    #     {
-    #       "stage_id": 3
-    #     }
-    #     """
-    #     project = self.get_object()
-    #     stage_id = request.data.get("stage_id")
-    #     if not stage_id:
-    #         return Response({"detail": "缺少参数 stage_id"}, status=status.HTTP_400_BAD_REQUEST)
-    #
-    #     from .models import ProjectStage
-    #     try:
-    #         stage = ProjectStage.objects.get(pk=stage_id)
-    #     except ProjectStage.DoesNotExist:
-    #         return Response({"detail": "无效的 stage_id"}, status=status.HTTP_400_BAD_REQUEST)
-    #
-    #     project.current_stage = stage
-    #     project.save(update_fields=["current_stage", "updated_at"])
-    #     return Response(ProjectSerializer(project).data)
-    #
-    # @action(detail=True, methods=["get"])
-    # def timeline(self, request, pk=None):
-    #     """
-    #     自定义动作：获取项目的最新行动记录（默认10条）
-    #     GET /projects/{id}/timeline/
-    #     """
-    #     project = self.get_object()
-    #     limit = int(request.query_params.get("limit", 10))
-    #     activities = project.activities.all().order_by("-activity_date")[:limit]
-    #     return Response(ActivitySerializer(activities, many=True).data)
-
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 class ActivityViewSet(viewsets.ModelViewSet):
     """
@@ -68,3 +39,15 @@ class ActivityViewSet(viewsets.ModelViewSet):
     search_fields = ['description', 'project__name']
     ordering_fields = ['activity_date', 'created_at']
     ordering = ['-activity_date']
+    permission_classes = [IsAuthenticated, CachedModelPermissions]
+    def get_queryset(self):
+        return Activity.objects.filter(created_by=self.request.user).select_related('created_by')
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+class ProjectStageViewSet(viewsets.ModelViewSet):
+    queryset = ProjectStage.objects.all()
+    serializer_class = ProjectStageSerializer
+    permission_classes = [IsAuthenticated, CachedModelPermissions]
+

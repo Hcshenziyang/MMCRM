@@ -58,31 +58,17 @@ class Project(models.Model):
         verbose_name="项目线索来源"
     )
     description = models.TextField(blank=True, verbose_name="项目描述")
-    expected_revenue = models.DecimalField(
+    revenue = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         blank=True,
         null=True,
-        verbose_name="预估销售额"
+        verbose_name="销售额"
     )
-    expected_close_date = models.DateField(
+    close_date = models.DateField(
         blank=True,
         null=True,
-        verbose_name="预计成交日期"
-    )
-
-    # 成交后字段
-    actual_close_date = models.DateField(
-        blank=True,
-        null=True,
-        verbose_name="实际成交日期"
-    )
-    actual_revenue = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        blank=True,
-        null=True,
-        verbose_name="实际成交金额"
+        verbose_name="成交日期"
     )
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")

@@ -5,6 +5,8 @@ from rest_framework import viewsets
 from rest_framework.filters import OrderingFilter, SearchFilter
 from .models import Customer
 from rest_framework.permissions import IsAuthenticated
+from mycrm.permissions import CachedModelPermissions
+
 from django.contrib.auth.decorators import login_required
 from rest_framework import status
 import openpyxl
@@ -15,7 +17,6 @@ from django.core.cache import cache  # 引入cache
 import json
 import hashlib
 from rest_framework.pagination import PageNumberPagination
-
 
 class CustomerPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
@@ -28,7 +29,7 @@ class CustomersSet(viewsets.ModelViewSet):
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ["name", "email", "phone", "address"]
     ordering_fields = ["created_at", "updated_at", "name"]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CachedModelPermissions]
 
     def get_queryset(self):
         return Customer.objects.filter(owner=self.request.user).select_related('owner')

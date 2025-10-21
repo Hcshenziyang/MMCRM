@@ -19,20 +19,24 @@
         <uni-table :loading="projectLoading" border stripe emptyText="暂无项目数据">
           <uni-tr>
             <uni-th align="center">项目名称</uni-th>
-            <uni-th align="center">关联客户</uni-th>
-            <uni-th align="center">负责人</uni-th>
-            <uni-th align="center">当前阶段</uni-th>
-            <uni-th align="center">预估销售额</uni-th>
-            <uni-th align="center">预计成交</uni-th>
+            <uni-th align="center">项目来源</uni-th>
+            <uni-th align="center">项目描述</uni-th>
+            <uni-th align="center">成交额</uni-th>
+            <uni-th align="center">成交时间</uni-th>
+            <uni-th align="center">客户名称</uni-th>
+            <uni-th align="center">项目负责人</uni-th>
+            <uni-th align="center">项目阶段</uni-th>
             <uni-th align="center" width="150">操作</uni-th>
           </uni-tr>
           <uni-tr v-for="item in projectList" :key="item.id">
             <uni-td align="center">{{ item.name }}</uni-td>
+            <uni-td align="center">{{ getSourceName(item.source) }}</uni-td>
+            <uni-td align="center">{{ item.description }}</uni-td>
+            <uni-td align="center">{{ item.revenue }}</uni-td>
+            <uni-td align="center">{{ item.close_date }}</uni-td>
             <uni-td align="center">{{ getCustomerName(item.customer) }}</uni-td>
             <uni-td align="center">{{ getOwnerName(item.owner) }}</uni-td>
             <uni-td align="center">{{ getStageName(item.current_stage) }}</uni-td>
-            <uni-td align="center">{{ item.expected_revenue }}</uni-td>
-            <uni-td align="center">{{ item.expected_close_date }}</uni-td>
             <uni-td align="center">
               <button class="action-btn edit-btn" size="mini" @click="openProjectForm('edit', item)">编辑</button>
               <button class="action-btn delete-btn" size="mini" @click="deleteProject(item.id)">删除</button>
@@ -59,7 +63,7 @@
             <uni-td align="center">{{ getProjectName(item.project) }}</uni-td>
             <uni-td align="center">{{ getActivityTypeName(item.activity_type) }}</uni-td>
             <uni-td align="center">{{ item.description }}</uni-td>
-            <uni-td align="center">{{ item.activity_date.split('T')[0] }}</uni-td>
+            <uni-td align="center">{{ item.activity_date ? item.activity_date.split('T')[0] : '' }}</uni-td>
             <uni-td align="center">{{ getOwnerName(item.created_by) }}</uni-td>
             <uni-td align="center">
               <button class="action-btn edit-btn" size="mini" @click="openActivityForm('edit', item)">编辑</button>
@@ -78,32 +82,34 @@
               <input class="input" v-model="projectFormData.name" placeholder="请输入项目名称" required />
             </view>
             <view class="form-item">
-              <text class="label">关联客户:</text>
-              <input class="input" v-model="projectFormData.customer" placeholder="请输入客户ID" required />
-            </view>
-            <view class="form-item">
-              <text class="label">项目负责人:</text>
-              <input class="input" v-model="projectFormData.owner" placeholder="请输入负责人ID" />
-            </view>
-            <view class="form-item">
-              <text class="label">当前阶段:</text>
-              <input class="input" v-model="projectFormData.current_stage" placeholder="请输入阶段ID" required />
-            </view>
-             <view class="form-item">
-                <text class="label">线索来源:</text>
-                <input class="input" v-model="projectFormData.source" placeholder="请输入来源" />
+              <text class="label">项目来源:</text>
+              <picker @change="onSourceChange" :value="sourceIndex" :range="sourceOptions.map(opt => opt.label)">
+                <view class="picker-value">{{ projectFormData.source ? getSourceName(projectFormData.source) : '请选择来源' }}</view>
+              </picker>
             </view>
             <view class="form-item">
               <text class="label">项目描述:</text>
               <input class="input" v-model="projectFormData.description" placeholder="请输入项目描述" />
             </view>
             <view class="form-item">
-              <text class="label">预估销售额:</text>
-              <input class="input" type="number" v-model="projectFormData.expected_revenue" placeholder="请输入预估销售额" />
+              <text class="label">成交额:</text>
+              <input class="input" type="number" v-model="projectFormData.revenue" placeholder="请输入预期成交额" />
             </view>
             <view class="form-item">
-              <text class="label">预计成交日:</text>
-              <input class="input" v-model="projectFormData.expected_close_date" placeholder="格式: YYYY-MM-DD" />
+              <text class="label">成交时间:</text>
+              <input class="input" v-model="projectFormData.close_date" placeholder="格式: YYYY-MM-DD" />
+            </view>
+            <view class="form-item">
+              <text class="label">客户名称:</text>
+              <picker @change="onCustomerChange" :value="customerIndex" :range="customerOptions.map(opt => opt.name)">
+                <view class="picker-value">{{ selectedCustomerName || '请选择客户' }}</view>
+              </picker>
+            </view>
+            <view class="form-item">
+              <text class="label">项目阶段:</text>
+              <picker @change="onStageChange" :value="stageIndex" :range="stageOptions.map(opt => opt.name)">
+                <view class="picker-value">{{ selectedStageName || '请选择阶段' }}</view>
+              </picker>
             </view>
             <view class="popup-actions">
               <button class="cancel-btn" @click="closeProjectPopup">取消</button>
@@ -119,11 +125,15 @@
           <form @submit="submitActivityForm">
             <view class="form-item">
               <text class="label">关联项目:</text>
-              <input class="input" v-model="activityFormData.project" placeholder="请输入项目ID" required />
+              <picker @change="onProjectChange" :value="projectIndex" :range="projectOptions.map(opt => opt.name)">
+                <view class="picker-value">{{ selectedProjectName || '请选择项目' }}</view>
+              </picker>
             </view>
             <view class="form-item">
-                <text class="label">行动类型:</text>
-                <input class="input" v-model="activityFormData.activity_type" placeholder="请输入行动类型" required/>
+              <text class="label">行动类型:</text>
+              <picker @change="onActivityTypeChange" :value="activityTypeIndex" :range="activityTypeOptions.map(opt => opt.label)">
+                <view class="picker-value">{{ activityFormData.activity_type ? getActivityTypeName(activityFormData.activity_type) : '请选择类型' }}</view>
+              </picker>
             </view>
             <view class="form-item">
               <text class="label">行动详情:</text>
@@ -131,7 +141,8 @@
             </view>
             <view class="form-item">
               <text class="label">行动日期:</text>
-               <input class="input" v-model="activityFormData.activity_date" placeholder="格式: YYYY-MM-DDTHH:MM:SS" required />
+              <!-- 注意：这里为了兼容，使用input，但实际生产中建议使用日期时间选择器组件 -->
+              <input class="input" v-model="activityFormData.activity_date" placeholder="格式: YYYY-MM-DDTHH:MM:SS" required />
             </view>
             <view class="popup-actions">
               <button class="cancel-btn" @click="closeActivityPopup">取消</button>
@@ -145,11 +156,13 @@
 </template>
 
 <script>
-// API函数导入 (假设已封装在api.js中)
+// API函数导入
 import { 
   project_view, project_create, project_update, project_del,
-  activity_view, activity_create, activity_update, activity_del 
+  activity_view, activity_create, activity_update, activity_del,
+  customer_view, user_view, stage_view
 } from '@/common/api.js'; 
+
 // 基础组件
 import Layout from '../layout/layout.uvue';
 import UniSegmentedControl from '../../uni_modules/uni-segmented-control/components/uni-segmented-control/uni-segmented-control.vue';
@@ -173,42 +186,95 @@ export default {
     return {
       currentSegment: 0, 
 
-      // --- 项目管理模块数据 ---
+      // 项目管理
       projectList: [],
       projectLoading: false,
       projectSubmitLoading: false,
       projectFormMode: 'create',
       projectFormData: {
-        id: null, name: '', customer: null, owner: null, current_stage: null,
-        source: '', description: '', expected_revenue: null, expected_close_date: null
+        id: null, 
+		name: '', 
+		source: '', 
+		description: '', 
+		revenue: null, 
+        close_date: null, 
+		customer: null, // 这个字段存储的是客户ID
+		owner: null, // 这个字段存储的是负责人ID
+		current_stage: null // 这个字段存储的是项目阶段ID
       },
+      sourceOptions: [
+        { value: 'website', label: '官网咨询' },
+        { value: 'phone_call', label: '电话拜访' },
+        { value: 'referral', label: '客户推荐' },
+        { value: 'sales_assignment', label: '销售主管分配' },
+        { value: 'self_generated', label: '自行开发' },
+        { value: 'other', label: '其他' }
+      ],
+      customerOptions: [],
+      userOptions: [], // 仍保留用于获取负责人名称显示，但不用于表单修改
+      stageOptions: [],
+      sourceIndex: -1,
+      customerIndex: -1,
+      stageIndex: -1,
+      selectedCustomerName: '',
+      selectedStageName: '',
 
-      // --- 行动记录模块数据 ---
+      // 行动记录
       activityList: [],
       activityLoading: false,
       activitySubmitLoading: false,
       activityFormMode: 'create',
       activityFormData: {
-        id: null, project: null, activity_type: '', description: '', activity_date: null
+        id: null, project: null, activity_type: '', description: '', activity_date: null, created_by: null
       },
-
-      // --- 用于辅助显示的数据 (实际项目中应从API获取) ---
-      customerData: [{id: 1, name: '示例客户A'}],
-      userData: [{id: 1, name: '销售小王'}],
-      stageData: [{id: 1, name: '初步接洽'}],
-      projectDataForMapping: [],
-      activityTypeMap: { 'call': '电话', 'visit': '拜访', 'email': '邮件', 'meeting': '会议', 'demo': '产品演示', 'proposal': '提交方案', 'other': '其他' }
+      activityTypeOptions: [
+        { value: 'call', label: '电话' },
+        { value: 'visit', label: '拜访' },
+        { value: 'email', label: '邮件' },
+        { value: 'meeting', label: '会议' },
+        { value: 'demo', label: '产品演示' },
+        { value: 'proposal', label: '提交方案' },
+        { value: 'other', label: '其他' }
+      ],
+      projectOptions: [],
+      activityTypeIndex: -1,
+      projectIndex: -1,
+      selectedProjectName: ''
     };
   },
   onLoad() {
+    // 初始化时获取当前用户ID并设置给owner
+    this.projectFormData.owner = this.getCurrentUserId(); 
+    this.activityFormData.created_by = this.getCurrentUserId();
+
     this.fetchProjects();
-    // 实际项目中应在此处获取客户、用户、阶段等用于选择器和名称映射的数据
-    // this.fetchCustomersForPicker();
-    // this.fetchUsersForPicker();
-    // this.fetchStagesForPicker();
+    this.fetchCustomers();
+    this.fetchUsers(); // 仍然需要获取用户列表用于显示负责人名称
+    this.fetchStages();
+    this.fetchActivities();
   },
   methods: {
-    // --- 通用方法 ---
+    /**
+     * @description 获取当前登录用户的ID。
+     * ！！！重要！！！
+     * 您需要根据您的实际认证系统实现此方法，例如从Vuex Store、localStorage或通过API获取。
+     * 目前这是一个占位符，如果未实现，将导致owner字段无效。
+     */
+    getCurrentUserId() {
+        // 示例：假设用户ID存储在localStorage中
+        // const userId = uni.getStorageSync('userId');
+        // if (userId) {
+        //     return parseInt(userId); // 确保是数字类型
+        // }
+        // 或者从Vuex/全局状态中获取
+        // return this.$store.getters.userId;
+        
+        // 暂时返回一个硬编码的ID，您需要替换为实际逻辑
+        console.warn("getCurrentUserId() 方法需要根据您的认证系统实现。目前返回硬编码值 1。");
+        return 1; // 替换为实际的用户ID
+    },
+
+    // 通用
     onClickSegment(e) {
       if (this.currentSegment !== e.currentIndex) {
         this.currentSegment = e.currentIndex;
@@ -219,148 +285,311 @@ export default {
         }
       }
     },
-	
     showToast(title, icon = 'none', duration = 1500) {
       uni.showToast({ title, icon, duration });
     },
 
-    // --- 项目管理 ---
+    // 项目管理
     async fetchProjects() {
       this.projectLoading = true;
       try {
-        this.projectList = await project_view();
-        this.projectDataForMapping = this.projectList; // 保存一份用于名称映射
+        const response = await project_view();
+        this.projectList = response || [];
+        // 为行动记录模块的picker准备项目选项
+        this.projectOptions = this.projectList.map(item => ({ id: item.id, name: item.name })); 
       } catch (e) {
-        this.showToast('获取项目列表失败', 'error');
+        console.error("获取项目失败:", e);
+        this.showToast('获取项目失败', 'error');
       } finally {
         this.projectLoading = false;
       }
     },
-    
+    async fetchCustomers() {
+      try {
+        const response = await customer_view();
+        this.customerOptions = response || [];
+      } catch (e) {
+        console.error("获取客户失败:", e);
+        this.showToast('获取客户失败', 'error');
+      }
+    },
+    async fetchUsers() {
+      try {
+        const response = await user_view();
+        this.userOptions = response || [];
+      } catch (e) {
+        console.error("获取用户失败:", e);
+        this.showToast('获取用户失败', 'error');
+      }
+    },
+    async fetchStages() {
+      try {
+        const response = await stage_view();
+        this.stageOptions = response || [];
+      } catch (e) {
+        console.error("获取阶段失败:", e);
+        this.showToast('获取阶段失败', 'error');
+      }
+    },
     openProjectForm(mode, item = null) {
       this.projectFormMode = mode;
-      this.resetProjectFormData();
+      this.resetProjectFormData(); // 每次打开前先重置
+
       if (mode === 'edit' && item) {
-        this.projectFormData = { ...item };
+        // 将后端返回的嵌套对象解构为ID，存入 projectFormData
+        this.projectFormData = { 
+          id: item.id,
+          name: item.name,
+          source: item.source,
+          description: item.description,
+          revenue: item.revenue,
+          close_date: item.close_date,
+          customer: item.customer ? item.customer.id : null, // 从嵌套对象中获取ID
+          owner: item.owner ? item.owner.id : this.getCurrentUserId(), // 从嵌套对象中获取ID
+          current_stage: item.current_stage ? item.current_stage.id : null // 从嵌套对象中获取ID
+        };
+
+        // 设置picker的索引和显示名称
+        this.sourceIndex = this.sourceOptions.findIndex(opt => opt.value === item.source);
+        this.customerIndex = this.customerOptions.findIndex(opt => opt.id === this.projectFormData.customer);
+        this.stageIndex = this.stageOptions.findIndex(opt => opt.id === this.projectFormData.current_stage);
+        
+        this.selectedCustomerName = item.customer ? item.customer.name : '';
+        this.selectedStageName = item.current_stage ? item.current_stage.name : '';
+      } else {
+         // 创建模式下，确保 owner 默认为当前用户
+         this.projectFormData.owner = this.getCurrentUserId();
       }
       this.$refs.projectPopup.open('center');
     },
-    
     closeProjectPopup() {
       this.$refs.projectPopup.close();
       this.resetProjectFormData();
     },
-    
     resetProjectFormData() {
-      this.projectFormData = {
-        id: null, name: '', customer: null, owner: null, current_stage: null,
-        source: '', description: '', expected_revenue: null, expected_close_date: null
+      this.projectFormData = { 
+        id: null, name: '', source: '', description: '', revenue: null, 
+        close_date: null, customer: null, owner: this.getCurrentUserId(), current_stage: null 
       };
+      this.sourceIndex = -1;
+      this.customerIndex = -1;
+      this.stageIndex = -1;
+      this.selectedCustomerName = '';
+      this.selectedStageName = '';
     },
-    
     async submitProjectForm() {
       this.projectSubmitLoading = true;
       try {
-        const payload = { ...this.projectFormData };
-        // 清理空值
-        Object.keys(payload).forEach(key => {
+        const payload = {
+          name: this.projectFormData.name,
+          source: this.projectFormData.source,
+          description: this.projectFormData.description,
+          revenue: this.projectFormData.revenue ? parseFloat(this.projectFormData.revenue) : null, 
+          close_date: this.projectFormData.close_date,
+          // *** 关键修改：将 customer 和 current_stage 的值赋给 customer_id 和 current_stage_id ***
+          customer_id: this.projectFormData.customer, // 对应后端 ProjectSerializer 中的 customer_id
+          current_stage_id: this.projectFormData.current_stage, // 对应后端 ProjectSerializer 中的 current_stage_id
+          owner: this.projectFormData.owner, // owner 字段依然作为 ID 发送，后端序列化器会忽略它进行写入，但对于创建操作，依然是必要的
+        };
+
+        // 过滤掉值为 null 或空字符串的字段
+        for (const key in payload) {
             if (payload[key] === null || payload[key] === '') {
                 delete payload[key];
             }
-        });
-
+        }
+        
         if (this.projectFormMode === 'create') {
+          // *** 关键修改：必填项校验也检查 customer_id 和 current_stage_id ***
+          if (!payload.name || !payload.source || !payload.customer_id || !payload.current_stage_id) {
+              this.showToast('请填写所有必填项 (项目名称, 来源, 客户, 阶段)', 'error');
+              this.projectSubmitLoading = false;
+              return;
+          }
           await project_create(payload);
-          this.showToast('项目创建成功', 'success');
+          this.showToast('创建成功', 'success');
         } else {
-          await project_update(payload.id, payload);
-          this.showToast('项目更新成功', 'success');
+          // 更新时，ID是必须的
+          if (!this.projectFormData.id) {
+              this.showToast('项目ID缺失，无法更新', 'error');
+              this.projectSubmitLoading = false;
+              return;
+          }
+          await project_update(this.projectFormData.id, payload);
+          this.showToast('更新成功', 'success');
         }
         this.closeProjectPopup();
-        this.fetchProjects();
+        this.fetchProjects(); // 刷新项目列表
       } catch (e) {
-        this.showToast(`操作失败: ${JSON.stringify(e.data || e.message)}`, 'error');
+        console.error("提交项目表单失败:", e);
+        const errorMessage = e.data && e.data.detail ? e.data.detail : e.message || '未知错误';
+        this.showToast(`操作失败: ${errorMessage}`, 'error');
       } finally {
         this.projectSubmitLoading = false;
       }
     },
-
     deleteProject(id) {
       uni.showModal({
-        title: '提示', content: '确定要删除此项目吗？',
+        title: '提示', content: '确定删除该项目吗？',
         success: async (res) => {
           if (res.confirm) {
             try {
               await project_del(id);
-              this.showToast('项目删除成功', 'success');
+              this.showToast('删除成功', 'success');
               this.fetchProjects();
             } catch (e) {
-              this.showToast('删除项目失败', 'error');
+              console.error("删除项目失败:", e);
+              this.showToast('删除失败', 'error');
             }
           }
         }
       });
     },
+    onSourceChange(e) {
+      this.sourceIndex = e.detail.value;
+      if (this.sourceIndex !== -1) {
+        this.projectFormData.source = this.sourceOptions[this.sourceIndex].value;
+      } else {
+        this.projectFormData.source = null;
+      }
+    },
+    onCustomerChange(e) {
+      this.customerIndex = e.detail.value;
+      if (this.customerIndex !== -1) {
+        this.projectFormData.customer = this.customerOptions[this.customerIndex].id;
+        this.selectedCustomerName = this.customerOptions[this.customerIndex].name;
+      } else {
+        this.projectFormData.customer = null;
+        this.selectedCustomerName = '';
+      }
+    },
+    onStageChange(e) {
+      this.stageIndex = e.detail.value;
+      if (this.stageIndex !== -1) {
+        this.projectFormData.current_stage = this.stageOptions[this.stageIndex].id;
+        this.selectedStageName = this.stageOptions[this.stageIndex].name;
+      } else {
+        this.projectFormData.current_stage = null;
+        this.selectedStageName = '';
+      }
+    },
+    getSourceName(value) {
+      const opt = this.sourceOptions.find(o => o.value === value);
+      return opt ? opt.label : value || '未知';
+    },
+    getCustomerName(customer) {
+      return customer ? customer.name : '未知客户';
+    },
+    getOwnerName(owner) {
+      // 这里的owner可能是一个ID或者一个对象，需要判断
+      if (typeof owner === 'object' && owner !== null) {
+        return owner.username || '未知用户';
+      }
+      // 如果后端只返回ID，需要从userOptions中查找
+      const user = this.userOptions.find(u => u.id === owner);
+      return user ? user.username : '未知用户';
+    },
+    getStageName(stage) {
+      return stage ? stage.name : '未知阶段';
+    },
 
-    // --- 行动记录管理 ---
+    // 行动记录
     async fetchActivities() {
       this.activityLoading = true;
       try {
-        this.activityList = await activity_view();
-        // 如果项目列表未加载，则加载它用于名称映射
-        if(this.projectDataForMapping.length === 0){
-            await this.fetchProjects();
-        }
+        const response = await activity_view();
+        this.activityList = response || [];
       } catch (e) {
+        console.error("获取行动记录失败:", e);
         this.showToast('获取行动记录失败', 'error');
       } finally {
         this.activityLoading = false;
       }
     },
-
     openActivityForm(mode, item = null) {
       this.activityFormMode = mode;
-      this.resetActivityFormData();
+      this.resetActivityFormData(); // 每次打开前先重置
+
       if (mode === 'edit' && item) {
-        this.activityFormData = { ...item };
+        this.activityFormData = { 
+          id: item.id,
+          project: item.project ? item.project.id : null,
+          activity_type: item.activity_type,
+          description: item.description,
+          activity_date: item.activity_date, 
+          created_by: item.created_by ? item.created_by.id : this.getCurrentUserId(), 
+        };
+
+        this.activityTypeIndex = this.activityTypeOptions.findIndex(opt => opt.value === item.activity_type);
+        this.projectIndex = this.projectOptions.findIndex(opt => opt.id === this.activityFormData.project);
+        this.selectedProjectName = item.project ? item.project.name : '';
+      } else {
+        this.activityFormData.created_by = this.getCurrentUserId();
+        this.activityFormData.activity_date = new Date().toISOString().slice(0, 19);
       }
       this.$refs.activityPopup.open('center');
     },
-
     closeActivityPopup() {
       this.$refs.activityPopup.close();
       this.resetActivityFormData();
     },
-
     resetActivityFormData() {
-      this.activityFormData = {
-        id: null, project: null, activity_type: '', description: '', activity_date: null
+      this.activityFormData = { 
+        id: null, project: null, activity_type: '', description: '', 
+        activity_date: new Date().toISOString().slice(0, 19), created_by: this.getCurrentUserId() 
       };
+      this.activityTypeIndex = -1;
+      this.projectIndex = -1;
+      this.selectedProjectName = '';
     },
-    
     async submitActivityForm() {
       this.activitySubmitLoading = true;
       try {
-        const payload = { ...this.activityFormData };
+        const payload = {
+          project_id: this.activityFormData.project,
+          activity_type: this.activityFormData.activity_type,
+          description: this.activityFormData.description,
+          activity_date: this.activityFormData.activity_date,
+          created_by: this.activityFormData.created_by, 
+        };
+
+        // 过滤掉值为 null 或空字符串的字段
+        for (const key in payload) {
+            if (payload[key] === null || payload[key] === '') {
+                delete payload[key];
+            }
+        }
+
         if (this.activityFormMode === 'create') {
+            if (!payload.project_id || !payload.activity_type || !payload.description || !payload.activity_date) {
+                this.showToast('请填写所有必填项 (关联项目, 类型, 详情, 日期)', 'error');
+                this.activitySubmitLoading = false;
+                return;
+            }
           await activity_create(payload);
-          this.showToast('行动记录创建成功', 'success');
+          this.showToast('创建成功', 'success');
         } else {
-          await activity_update(payload.id, payload);
-          this.showToast('行动记录更新成功', 'success');
+            if (!this.activityFormData.id) {
+                this.showToast('行动记录ID缺失，无法更新', 'error');
+                this.activitySubmitLoading = false;
+                return;
+            }
+          await activity_update(this.activityFormData.id, payload);
+          this.showToast('更新成功', 'success');
         }
         this.closeActivityPopup();
         this.fetchActivities();
       } catch (e) {
-        this.showToast(`操作失败: ${JSON.stringify(e.data || e.message)}`, 'error');
+        console.error("提交行动记录表单失败:", e);
+        const errorMessage = e.data && e.data.detail ? e.data.detail : e.message || '未知错误';
+        this.showToast(`操作失败: ${errorMessage}`, 'error');
       } finally {
         this.activitySubmitLoading = false;
       }
     },
-
     deleteActivity(id) {
       uni.showModal({
-        title: '提示', content: '确定要删除此行动记录吗？',
+        title: '提示', content: '确定删除该行动记录吗？',
         success: async (res) => {
           if (res.confirm) {
             try {
@@ -368,32 +597,37 @@ export default {
               this.showToast('删除成功', 'success');
               this.fetchActivities();
             } catch (e) {
+              console.error("删除行动记录失败:", e);
               this.showToast('删除失败', 'error');
             }
           }
         }
       });
     },
-    
-    // --- 名称映射方法 (辅助显示) ---
-    getCustomerName(id) {
-        const customer = this.customerData.find(c => c.id === id);
-        return customer ? customer.name : `ID: ${id}`;
+    onActivityTypeChange(e) {
+      this.activityTypeIndex = e.detail.value;
+      if (this.activityTypeIndex !== -1) {
+        this.activityFormData.activity_type = this.activityTypeOptions[this.activityTypeIndex].value;
+      } else {
+        this.activityFormData.activity_type = null;
+      }
     },
-    getOwnerName(id) {
-        const user = this.userData.find(u => u.id === id);
-        return user ? user.name : `ID: ${id}`;
+    onProjectChange(e) {
+      this.projectIndex = e.detail.value;
+      if (this.projectIndex !== -1) {
+        this.activityFormData.project = this.projectOptions[this.projectIndex].id;
+        this.selectedProjectName = this.projectOptions[this.projectIndex].name;
+      } else {
+        this.activityFormData.project = null;
+        this.selectedProjectName = '';
+      }
     },
-    getStageName(id) {
-        const stage = this.stageData.find(s => s.id === id);
-        return stage ? stage.name : `ID: ${id}`;
+    getProjectName(project) {
+      return project ? project.name : '未知项目';
     },
-    getProjectName(id) {
-        const project = this.projectDataForMapping.find(p => p.id === id);
-        return project ? project.name : `ID: ${id}`;
-    },
-    getActivityTypeName(key) {
-        return this.activityTypeMap[key] || key;
+    getActivityTypeName(value) {
+      const opt = this.activityTypeOptions.find(o => o.value === value);
+      return opt ? opt.label : value || '未知类型';
     }
   },
 };
@@ -460,6 +694,7 @@ export default {
 }
 
 /* 表格内字体样式 */
+/* 注意：uni-table内部样式通常需要通过 ::v-deep 或 /deep/ 来穿透修改 */
 .uni-table ::v-deep .uni-table-td {
     vertical-align: middle;
 }
@@ -468,10 +703,10 @@ export default {
 .popup-content {
   background-color: #fff;
   width: 1100rpx;
-  max-width: 450px;
+  max-width: 450px; /* 限制最大宽度，更适应PC端 */
   border-radius: 10px;
   padding: 25px;
-  box-sizing: border-box;
+  box-sizing: border-box; /* 确保内边距不影响宽度 */
 }
 
 /* 弹窗标题 */
@@ -486,12 +721,13 @@ export default {
 /* 表单项 */
 .form-item {
   display: flex;
+  flex-direction: row; /* 明确主轴方向为水平 */
   align-items: center;
   margin-bottom: 15px;
 }
 .form-item .label {
   width: 100px;
-  flex-shrink: 0;
+  flex-shrink: 0; /* 防止 label 被压缩 */
   font-size: 15px;
   color: #555;
   text-align: left;
@@ -506,7 +742,8 @@ export default {
   color: #333;
 }
 .form-item .input:focus {
-  border-color: #fea17a;
+  border-color: #fea17a; /* 聚焦时边框颜色 */
+  outline: none; /* 移除默认聚焦轮廓 */
 }
 
 /* 弹窗操作按钮区域 */
@@ -514,13 +751,16 @@ export default {
   display: flex;
   justify-content: center;
   margin-top: 30px;
-  gap: 20px;
+  gap: 20px; /* 按钮之间的间距 */
 }
 .cancel-btn,
 .submit-btn {
   padding: 8px 25px;
   border-radius: 5px;
   font-size: 15px;
+  /* 统一按钮高度 */
+  height: auto; 
+  line-height: normal;
 }
 .cancel-btn {
   background-color: #f0f0f0;
@@ -528,7 +768,7 @@ export default {
   border: 1px solid #e0e0e0;
 }
 .cancel-btn::after {
-  border: none;
+  border: none; /* 移除uni-app按钮默认的after伪元素边框 */
 }
 .submit-btn {
   background-color: #fea17a;
@@ -536,6 +776,19 @@ export default {
   border: none;
 }
 .submit-btn::after {
-  border: none;
+  border: none; /* 移除uni-app按钮默认的after伪元素边框 */
+}
+
+/* picker显示值样式 */
+.picker-value {
+  flex: 1;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #333;
+  min-height: 20px; /* 确保没有内容时也有高度 */
+  display: flex;
+  align-items: center;
 }
 </style>
