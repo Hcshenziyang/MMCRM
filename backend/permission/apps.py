@@ -5,4 +5,4 @@ class PermissionConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'permission'
     def ready(self):
-        import mycrm.permission_signals
+        pass

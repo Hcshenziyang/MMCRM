@@ -2,7 +2,7 @@
 import { ensureAccessToken, clearTokens } from './auth.js';
 
 // 建议：BASE_URL 不以斜杠结尾，后续统一拼接
-const BASE_URL = "http://127.0.0.1:8000";
+const BASE_URL = "/crm/api";
 
 /**
  * @description 统一拼接 URL，避免重复或缺失斜杠

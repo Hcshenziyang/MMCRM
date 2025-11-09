@@ -5,8 +5,6 @@ from mycrm.permissions import CachedModelPermissions
 from django.db.models import Prefetch
 from .serializers import UserSerializer, GroupSerializer, PermissionSerializer
 
-from django.db import connection
-
 
 class UserViewSet(viewsets.ModelViewSet):
     # queryset = User.objects.all()

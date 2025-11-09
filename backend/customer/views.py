@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from rest_framework.response import Response
 from .serializers import CustomerSerializer
 from rest_framework import viewsets
@@ -7,7 +6,6 @@ from .models import Customer
 from rest_framework.permissions import IsAuthenticated
 from mycrm.permissions import CachedModelPermissions
 
-from django.contrib.auth.decorators import login_required
 from rest_framework import status
 import openpyxl
 from openpyxl.utils import get_column_letter

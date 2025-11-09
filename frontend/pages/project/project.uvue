@@ -112,8 +112,8 @@
               </picker>
             </view>
             <view class="popup-actions">
-              <button class="cancel-btn" @click="closeProjectPopup">取消</button>
               <button class="submit-btn" form-type="submit" :loading="projectSubmitLoading">提交</button>
+			  <button class="cancel-btn" @click="closeProjectPopup">取消</button>
             </view>
           </form>
         </view>
@@ -261,15 +261,7 @@ export default {
      * 目前这是一个占位符，如果未实现，将导致owner字段无效。
      */
     getCurrentUserId() {
-        // 示例：假设用户ID存储在localStorage中
-        // const userId = uni.getStorageSync('userId');
-        // if (userId) {
-        //     return parseInt(userId); // 确保是数字类型
-        // }
-        // 或者从Vuex/全局状态中获取
-        // return this.$store.getters.userId;
-        
-        // 暂时返回一个硬编码的ID，您需要替换为实际逻辑
+
         console.warn("getCurrentUserId() 方法需要根据您的认证系统实现。目前返回硬编码值 1。");
         return 1; // 替换为实际的用户ID
     },
@@ -730,7 +722,7 @@ export default {
   flex-shrink: 0; /* 防止 label 被压缩 */
   font-size: 15px;
   color: #555;
-  text-align: left;
+  text-align: right;
   margin-right: 15px;
 }
 .form-item .input {
@@ -749,19 +741,20 @@ export default {
 /* 弹窗操作按钮区域 */
 .popup-actions {
   display: flex;
+  flex-direction: row;
   justify-content: center;
   margin-top: 30px;
-  gap: 20px; /* 按钮之间的间距 */
+  gap: 50px; /* 按钮之间的间距 */
 }
 .cancel-btn,
 .submit-btn {
-  padding: 8px 25px;
-  border-radius: 5px;
+  padding: 5px 20px;
+  border-radius: 8px;
   font-size: 15px;
-  /* 统一按钮高度 */
-  height: auto; 
-  line-height: normal;
+  border: none;
+  width: 35%;
 }
+
 .cancel-btn {
   background-color: #f0f0f0;
   color: #666;
