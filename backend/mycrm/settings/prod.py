@@ -1,0 +1,17 @@
+# mycrm/settings/prod.py
+from .base import *
+
+
+SECRET_KEY = os.getenv("SECRET_KEY")  # 必须从环境变量读取
+
+# 强制安全 HTTPS 配置
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+
+
+
