@@ -5,7 +5,6 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from .models import Customer
 from rest_framework.permissions import IsAuthenticated
 from mycrm.permissions import CachedModelPermissions
-
 from rest_framework import status
 import openpyxl
 from openpyxl.utils import get_column_letter
@@ -22,6 +21,7 @@ class CustomerPagination(PageNumberPagination):
 
 
 class CustomersSet(viewsets.ModelViewSet):
+    # 客户视图集，带缓存逻辑
     serializer_class = CustomerSerializer
     pagination_class = CustomerPagination
     filter_backends = [SearchFilter, OrderingFilter]
@@ -36,20 +36,16 @@ class CustomersSet(viewsets.ModelViewSet):
         serializer.save(owner=self.request.user)
 
     def list(self, request, *args, **kwargs):
-        """
-        重写 list 方法，加入缓存逻辑
-        """
         # 获取客户数据版本号
         version_key = 'crm:customers:version'
         version = cache.get(version_key, 1)  # 默认版本为1
 
-        # 构造动态且唯一的缓存键
+        # 构造动态且唯一的缓存键，包含用户ID、版本号和查询参数
         query_params_str = json.dumps(sorted(request.query_params.items()))
         query_hash = hashlib.md5(query_params_str.encode('utf-8')).hexdigest()
-
         cache_key = f"crm:customers:list:u{request.user.id}:v{version}:{query_hash}"
 
-        # 尝试从缓存获取数据
+        # 优先读取缓存
         cached_response_data = cache.get(cache_key)
         if cached_response_data:
             return Response(cached_response_data)
@@ -59,7 +55,7 @@ class CustomersSet(viewsets.ModelViewSet):
 
         # 将返回结果的数据部分写入缓存
         cache.set(cache_key, response.data, timeout=3600)  # 设置TTL为1h
-        print(f"写入缓存成功。Key: {cache_key}")
+        # print(f"写入缓存成功。Key: {cache_key}")
 
         return response
 
