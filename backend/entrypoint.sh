@@ -1,13 +1,28 @@
 #!/bin/sh
+#!/bin/sh
+set -e
 
-# 1. 执行数据迁移
-echo "Running database migrations..."
-python manage.py migrate --no-input
+echo "Waiting for MySQL..."
+while ! nc -z db 3306; do
+    sleep 1
+done
 
-# 2. 收集 Admin 静态文件 (如果用了 Admin)
-echo "Collecting static files..."
-python manage.py collectstatic --no-input --clear
+echo "Running migrations..."
+python manage.py migrate --noinput
 
-# 3. 启动 Gunicorn
-echo "Starting Gunicorn..."
-exec gunicorn --bind 0.0.0.0:8000 mycrm.wsgi:application --workers 3
+# Only seed once
+if [ ! -f /app/.seeded ]; then
+    echo "Loading initial data..."
+    if [ -f /app/initial_data.json ]; then
+        python manage.py loaddata initial_data.json
+        touch /app/.seeded
+        echo "Initial data loaded."
+    else
+        echo "initial_data.json not found, skipping."
+    fi
+else
+    echo "Initial data already loaded. Skipping."
+fi
+
+echo "Starting gunicorn..."
+exec gunicorn mycrm.wsgi:application --bind 0.0.0.0:8000 --workers 3

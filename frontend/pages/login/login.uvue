@@ -46,7 +46,7 @@ export default {
     handleRegister() {
       uni.showModal({
         title: '提示',
-        content: '很抱歉！暂不公开注册！\n测试账号：13989\n测试密码：was13579',
+        content: '很抱歉！暂不公开注册！\n测试账号：13989\n测试密码：123456\n',
         showCancel: false,
         confirmText: '我知道了'
       });

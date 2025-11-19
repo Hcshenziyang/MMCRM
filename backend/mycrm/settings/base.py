@@ -33,6 +33,7 @@ INSTALLED_APPS = [
 # 同样类似于项目的import，不过导入的是中间件
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -40,7 +41,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "mycrm.middleware.QueryCountMiddleware",
-    'corsheaders.middleware.CorsMiddleware',
 ]
 
 # 项目主URL配置模块路径，项目会导入mycrm/urls.py作为起点
@@ -90,7 +90,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 # 定义一个变量，指定是否允许所有来源的跨域
 CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL_ORIGINS", default=False, cast=bool)
 # 定义一个变脸，指定列表，允许的跨域请求具体来源
-CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="", cast=str).split(",")
+CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:8080", cast=str).split(",")
 
 # 配置自增字段，用于标准化和优化数据库主键行为，BigAutoField 64位整数，避免大型项目ID溢出
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

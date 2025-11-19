@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Black">
-    <option name="sdkName" value="use1" />
+    <option name="sdkName" value="mmcrm" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="mycrm" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="mmcrm" project-jdk-type="Python SDK" />
   <component name="PyCharmProfessionalAdvertiser">
     <option name="shown" value="true" />
   </component>
