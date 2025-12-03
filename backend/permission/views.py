@@ -27,13 +27,3 @@ class PermissionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Permission.objects.all()
     serializer_class = PermissionSerializer
     permission_classes = [IsAuthenticated, CachedModelPermissions]
-
-
-class GroupViewSet(viewsets.ModelViewSet):
-    # queryset = Group.objects.all().prefetch_related('user_set', 'permissions') # 这是之前的版本
-
-    # --- 优化后的版本 ---
-    queryset = Group.objects.prefetch_related('permissions',Prefetch('user_set', queryset=User.objects.prefetch_related('groups')))
-
-    serializer_class = GroupSerializer
-    permission_classes = [IsAuthenticated, CachedModelPermissions]
