@@ -9,3 +9,5 @@ urlpatterns = [
     path("project/", include("project.urls")),
 ]
 
+
+urlpatterns += [path('silk/', include('silk.urls', namespace='silk'))]  # 测试工具

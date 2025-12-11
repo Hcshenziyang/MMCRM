@@ -35,29 +35,34 @@ class CustomersSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
+    # def list(self, request, *args, **kwargs):
+    #     # 使用缓存
+    #     # 获取客户数据版本号
+    #     version_key = 'crm:customers:version'
+    #     version = cache.get(version_key, 1)  # 默认版本为1
+    #
+    #     # 构造动态且唯一的缓存键，包含用户ID、版本号和查询参数
+    #     query_params_str = json.dumps(sorted(request.query_params.items()))
+    #     query_hash = hashlib.md5(query_params_str.encode('utf-8')).hexdigest()
+    #     cache_key = f"crm:customers:list:u{request.user.id}:v{version}:{query_hash}"
+    #
+    #     # 优先读取缓存
+    #     cached_response_data = cache.get(cache_key)
+    #     if cached_response_data:
+    #         return Response(cached_response_data)
+    #
+    #     # 缓存未命中，执行原始的查询和序列化逻辑
+    #     response = super().list(request, *args, **kwargs)
+    #
+    #     # 将返回结果的数据部分写入缓存
+    #     cache.set(cache_key, response.data, timeout=3600)  # 设置TTL为1h
+    #     # print(f"写入缓存成功。Key: {cache_key}")
+    #
+    #     return response
+
+    # list 但不做缓存优化 → 直接走 DRF 标准查询
     def list(self, request, *args, **kwargs):
-        # 获取客户数据版本号
-        version_key = 'crm:customers:version'
-        version = cache.get(version_key, 1)  # 默认版本为1
-
-        # 构造动态且唯一的缓存键，包含用户ID、版本号和查询参数
-        query_params_str = json.dumps(sorted(request.query_params.items()))
-        query_hash = hashlib.md5(query_params_str.encode('utf-8')).hexdigest()
-        cache_key = f"crm:customers:list:u{request.user.id}:v{version}:{query_hash}"
-
-        # 优先读取缓存
-        cached_response_data = cache.get(cache_key)
-        if cached_response_data:
-            return Response(cached_response_data)
-
-        # 缓存未命中，执行原始的查询和序列化逻辑
-        response = super().list(request, *args, **kwargs)
-
-        # 将返回结果的数据部分写入缓存
-        cache.set(cache_key, response.data, timeout=3600)  # 设置TTL为1h
-        # print(f"写入缓存成功。Key: {cache_key}")
-
-        return response
+        return super().list(request, *args, **kwargs)
 
     @action(detail=False, methods=['post'])
     def import_excel(self, request):
