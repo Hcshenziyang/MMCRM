@@ -3,7 +3,7 @@
   <component name="Black">
     <option name="sdkName" value="mmcrm" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="mmcrm" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="mycrm" project-jdk-type="Python SDK" />
   <component name="PyCharmProfessionalAdvertiser">
     <option name="shown" value="true" />
   </component>
