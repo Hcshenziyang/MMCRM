@@ -1,136 +1,171 @@
-from django.shortcuts import render
-import re
+import json
+import logging
+from datetime import datetime, timedelta
+
+# Django & DRF Imports
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from openai import OpenAI
-# Create your views here.
-# AI逻辑
-'''
-第一层：意图识别（Intent / Slot）
-输入：网页内一段自然语言（如“帮我建一个客户叫张三，电话xxx，并给他打上VIP”）。
-输出：意图 + 参数（如 intent=customer.create, slots={name, phone, tags}）。
-LLM 分类（覆盖长尾）：让模型只做“选意图 + 填槽”，不要生成任何可执行代码。
 
-第二层：指令生成（Command Schema）
-后端把意图映射到固定的指令协议（非常关键）：
-command: "route.push" | "api.call" | "ui.openModal" | "ui.fillForm"
-payload: { path, query, api, method, body, modalId, formValues }
-例子：
-用户说“我要看上周新增客户”
-→ { command:"route.push", payload:{ path:"/customers", query:{ created_after:"2025-12-07", created_before:"2025-12-14", ordering:"-created_at"} } }
-注意：后端必须做二次校验（权限、字段合法性、过滤条件上限），不要相信模型给的任何参数。
+# LLM-api调用
+def call_llm(system_prompt: str, user_prompt: str):
+    try:
+        client = OpenAI(
+            api_key=getattr(settings, 'DEEPSEEK_API_KEY', None),  # 环境变量中配置API
+            base_url="https://api.deepseek.com"
+        )
+        if not client.api_key:
+            print("DEEPSEEK_API_KEY 未在 Django settings 中配置。")
+            return json.dumps({
+                "intent": "error",
+                "slots": {"message": "AI服务配置错误，请联系管理员。"}
+            })
 
-第三层：客户端执行（Router + Action Executor）
-前端只做两件事：
-把用户文本发给后端：POST /ai/command { text, context }
-context 里带当前页面、用户角色、当前选中的客户/项目ID（如果有）。
-接收后端返回的 command，然后走一个执行器：
-route.push：调用前端路由跳转（react-router / vue-router / uni-app 的 navigateTo）
-ui.openModal/ui.fillForm：打开弹窗并预填表单
-api.call：调用既有接口（仍走你现有鉴权与权限系统）
-关键安全边界（必须做）
-白名单：只允许有限的 intent 与 command；任何未知值直接拒绝。
-权限：意图级别权限校验（比如 customer.delete 必须管理员）。
-可解释与可回滚：返回“将要执行什么”，前端默认“确认后执行”，尤其是写操作（创建/删除/更新）。
-观测与迭代：把 text、intent、slots、最终执行结果落日志，方便你补规则/微调提示词。
-'''
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            stream=False,
+            temperature=0,
+        )
+        return response.choices[0].message.content
 
-
-# LLM调用
-def call_llm(system_prompt, user_prompt):
-    # deepseek api 调用
-    # 初始化 OpenAI 客户端
-    client = OpenAI(
-        api_key="？？",  # todo 待修改环境变量
-        base_url="https://api.deepseek.com"
-    )
-    # 获取用户输入的问题
-    question = "问题"
-    # 调用大模型 API
-    response = client.chat.completions.create(
-        model="deepseek-chat",
-        messages=[
-            {"role": "system", "content": f"{system_prompt}"},
-            {"role": "user", "content": f"{user_prompt}"},
-        ],
-        stream=False)
-    # 提取回答内容
-    answer = response.choices[0].message.content
-    return answer
-
-# 意图识别
-def llm_intent_parse(self, text: str):
-    """
-    实验态：全 AI 意图识别
-    """
-    system_prompt = """
-你是一个意图分类器。
-你只能从以下intent中选择一个：
-customer.create
-customer.list
-unknown
-
-你只能返回 JSON，不要解释，不要多余文字。
-JSON 格式：
-{
-  "intent": "...",
-  "slots": { ... }
-}
-"""
-    user_prompt = f"用户输入：{text}"
-    result = call_llm(system_prompt, user_prompt)
-    return result["intent"], result.get("slots", {})
-
-
-class AIIntentView(APIView):
-    permission_classes = [IsAuthenticated]
-    def post(self, request):
-        text: str = request.data.get("text", "").strip()
-        intent, slots = self.rule_intent_parse(text)
-        return Response({
-            "intent": intent,
-            "slots": slots
+    except Exception as e:
+        print(f"调用 LLM API 时发生错误: {e}")
+        return json.dumps({
+            "intent": "error",
+            "slots": {"message": f"调用AI服务时发生未知错误: {e}"}
         })
 
-    def rule_intent_parse(self, text: str):
+# 接收自然语言并转换为前端指令
+class AiCommandView(APIView):
+    # 确保只有登录用户才能访问。你还可以创建更精细的权限。
+    permission_classes = [IsAuthenticated]
+
+    def _llm_intent_parse(self, text: str):
+        system_prompt = """
+        你是一个意图分类器和信息提取器。
+        你的任务是分析用户输入的文本，并从中识别出意图和相关的参数（槽位）。
+
+        你只能从以下意图中选择一个：
+        - customer.create: 当用户想要创建一个新客户时。需要提取 name, phone等信息。
+        - customer.list: 当用户想要查看、搜索或筛选客户列表时。
+        - unknown: 当用户意图不明确或超出你的能力范围时。
+        - talk: 当用户只是在进行日常对话时。
+
+        你必须返回一个 JSON 对象，不能包含任何解释或其他多余的文字。
+        JSON 格式如下：
+        {
+          "intent": "...",
+          "slots": { ... }
+        }
         """
-        规则优先的意图识别
-        """
-        # ---------- customer.create ----------
-        if self._match_any(text, ["创建客户", "新增客户", "加客户", "建一个客户"]):
-            slots = {}
+        user_prompt = f"用户输入：{text}"
 
-            # 姓名
-            name_match = re.search(r"客户叫(.+?)(，|,|$)", text)
-            if name_match:
-                slots["name"] = name_match.group(1).strip()
+        # 调用LLM并获取返回的字符串
+        llm_response_str = call_llm(system_prompt, user_prompt)
 
-            # 电话
-            phone_match = re.search(r"(电话|手机号)(是)?(\d{6,15})", text)
-            if phone_match:
-                slots["phone"] = phone_match.group(3)
+        # 将LLM返回的JSON字符串解析为Python字典
+        try:
+            result = json.loads(llm_response_str)
+            intent = result.get("intent", "unknown")
+            slots = result.get("slots", {})
+            return intent, slots
+        except json.JSONDecodeError:
+            print(f"无法解析LLM返回的JSON: {llm_response_str}")
+            return "error", {"message": "无法解析AI服务的返回结果。"}
 
-            # 标签
-            if "VIP" in text:
-                slots.setdefault("tags", []).append("VIP")
+    def _generate_command_from_intent(self, intent: str, slots: dict, user):
+        # --- 安全边界：意图级别权限校验 ---
+        if intent == "customer.create" and not user.has_perm('app_name.add_customer'):
+            # 假设你的权限模型是 'app_name.add_customer'
+            return {
+                "command": "ui.showMessage",
+                "payload": {"type": "error", "message": "你没有创建客户的权限。"}
+            }
 
-            return "customer.create", slots
+        # --- 逻辑判断与指令生成 ---
+        if intent == "customer.create":
+            # 校验slots中的字段合法性（例如电话号码格式）
+            # ... 此处添加你的校验逻辑 ...
 
-        # ---------- customer.list ----------
-        if self._match_any(text, ["客户列表", "查看客户", "所有客户"]):
-            return "customer.list", {}
-
-        # ---------- customer.detail ----------
-        if self._match_any(text, ["客户详情", "查看客户"]):
-            name_match = re.search(r"客户(.+)", text)
-            if name_match:
-                return "customer.detail", {
-                    "name": name_match.group(1).strip()
+            return {
+                "command": "ui.openModal",
+                "payload": {
+                    "modalId": "customerCreateModal",
+                    "formValues": {
+                        "name": slots.get("name"),
+                        "phone": slots.get("phone"),
+                        "tags": slots.get("tags")
+                    }
                 }
+            }
 
-        # ---------- fallback ----------
-        return "unknown", {}
+        elif intent == "customer.list":
+            # 例子：“我要看上周新增客户”
+            # LLM可能不会直接给你日期，你需要在这里做语义理解和转换
+            # 这是一个简化的例子，实际可能需要更复杂的日期解析库
+            query = {"ordering": "-created_at"}
+            if "上周" in slots.get("time_range", ""):
+                today = datetime.now()
+                start_of_week = today - timedelta(days=today.weekday())
+                end_of_last_week = start_of_week - timedelta(seconds=1)
+                start_of_last_week = end_of_last_week - timedelta(days=7)
+                query["created_after"] = start_of_last_week.strftime('%Y-%m-%d')
+                query["created_before"] = end_of_last_week.strftime('%Y-%m-%d')
 
-    def _match_any(self, text: str, keywords: list[str]) -> bool:
-        return any(k in text for k in keywords)
+            return {
+                "command": "route.push",
+                "payload": {
+                    "path": "/customers",
+                    "query": query
+                }
+            }
+
+        elif intent == "talk":
+            # 对于闲聊，可以直接返回一个显示消息的指令
+            return {
+                "command": "ui.showMessage",
+                "payload": {"type": "info", "message": "很高兴为您服务，需要我做什么吗？"}
+            }
+
+        elif intent == "error":
+            # 处理LLM调用或解析时发生的错误
+            return {
+                "command": "ui.showMessage",
+                "payload": {"type": "error", "message": slots.get("message", "发生未知错误")}
+            }
+
+        else:  # 对应 unknown 意图
+            return {
+                "command": "ui.showMessage",
+                "payload": {"type": "warning", "message": "抱歉，我暂时无法理解您的指令。"}
+            }
+
+    def post(self, request, *args, **kwargs):
+        """
+        处理前端发送的 POST /ai/command 请求
+        """
+        # 从请求体中获取用户输入的文本和上下文
+        text = request.data.get('text')
+        context = request.data.get('context', {})  # context可以包含当前页面等信息
+
+        if not text:
+            return Response(
+                {"error": "缺少 'text' 字段。"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 调用LLM进行意图识别
+        intent, slots = self._llm_intent_parse(text)
+
+        # 根据意图生成指令
+        command = self._generate_command_from_intent(intent, slots, request.user)
+
+        # 第三层：将指令返回给客户端执行
+        return Response(command, status=status.HTTP_200_OK)
