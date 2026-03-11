@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
 
 urlpatterns = [
     path("admin/", admin.site.urls),         # Django 自带后台
@@ -7,8 +8,11 @@ urlpatterns = [
     path("permission/", include("permission.urls")),
     path("customer/", include("customer.urls")),
     path("project/", include("project.urls")),
-    path("aihelper/", include("aihelper.urls")),
+    # path("aihelper/", include("aihelper.urls")),
 ]
 
 
-urlpatterns += [path('silk/', include('silk.urls', namespace='silk'))]  # 测试工具
+if settings.DEBUG:
+    urlpatterns += [
+        path('silk/', include('silk.urls', namespace='silk')),
+    ]

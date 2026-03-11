@@ -27,11 +27,16 @@ COPY . /app/
 
 # 拷贝 entrypoint
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
-# 切换用户（可选）
-RUN useradd -m appuser
+# 修复换行、赋权、创建用户并调整目录权限
+RUN sed -i 's/\r$//' /entrypoint.sh \
+    && chmod +x /entrypoint.sh \
+    && useradd -m appuser \
+    && chown -R appuser:appuser /app \
+    && chown appuser:appuser /entrypoint.sh
+
 USER appuser
+
 
 # 对外暴露后端端口
 EXPOSE 8000

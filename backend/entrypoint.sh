@@ -1,5 +1,4 @@
 #!/bin/sh
-#!/bin/sh
 set -e
 
 echo "Waiting for MySQL..."
@@ -10,7 +9,6 @@ done
 echo "Running migrations..."
 python manage.py migrate --noinput
 
-# Only seed once
 if [ ! -f /app/.seeded ]; then
     echo "Loading initial data..."
     if [ -f /app/initial_data.json ]; then

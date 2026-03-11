@@ -92,6 +92,7 @@ CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL_ORIGINS", default=False, cast=bo
 # 定义一个变脸，指定列表，允许的跨域请求具体来源
 CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:8080", cast=str).split(",")
 
+
 # 配置自增字段，用于标准化和优化数据库主键行为，BigAutoField 64位整数，避免大型项目ID溢出
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -129,3 +130,4 @@ CACHES = {
         "TIMEOUT": config("CACHE_TIMEOUT", default=600, cast=int),  # 10分钟默认
     }
 }
+

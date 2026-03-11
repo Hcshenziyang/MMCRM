@@ -9,7 +9,7 @@ def main():
     """Run administrative tasks."""
     os.environ.setdefault(
         "DJANGO_SETTINGS_MODULE", config("DJANGO_SETTINGS_MODULE", default="mycrm.settings.prod")
-    )
+    )  # 切换配置
     if len(sys.argv) > 1 and sys.argv[1] == 'runserver':
         from django.core.cache import cache
         print("[Cache] Clearing cache on startup (safe mode)...")
