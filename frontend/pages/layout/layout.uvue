@@ -28,11 +28,18 @@
         <slot />
       </view>
     </view>
+
+    <!-- 全局 AI 对话入口（除登录页外） -->
+    <ai-chat-widget />
   </view>
 </template>
 
 <script lang="uts">
+import AiChatWidget from '../../components/AiChatWidget.uvue'
 export default {
+  components: {
+    AiChatWidget,
+  },
   data() {
     return {
       current: '/pages/home/home', // 默认选中首页

@@ -153,3 +153,12 @@ export function stage_view(data) {
   return request(`/project/stages/`, "GET", data);
 }
 
+
+export async function aiChat(message, conversationId = null) {
+  const data = {
+    message,
+    conversation_id: conversationId,
+  };
+  // 默认走鉴权（如确实免鉴权，再在调用方传 opts 或改这里）
+  return request("/aihelper/ai/chat/", "POST", data);
+}
