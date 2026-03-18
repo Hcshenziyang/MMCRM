@@ -8,7 +8,7 @@ urlpatterns = [
     path("permission/", include("permission.urls")),
     path("customer/", include("customer.urls")),
     path("project/", include("project.urls")),
-    # path("aihelper/", include("aihelper.urls")),
+    path("aihelper/", include("aihelper.urls")),
 ]
 
 

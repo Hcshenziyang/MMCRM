@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'project',
     'django_filters',
     'corsheaders',
+    'aihelper',
 ]
 
 # 同样类似于项目的import，不过导入的是中间件

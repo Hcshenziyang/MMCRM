@@ -8,7 +8,7 @@ from django.core.cache import cache
 def main():
     """Run administrative tasks."""
     os.environ.setdefault(
-        "DJANGO_SETTINGS_MODULE", config("DJANGO_SETTINGS_MODULE", default="mycrm.settings.prod")
+        "DJANGO_SETTINGS_MODULE", config("DJANGO_SETTINGS_MODULE", default="mycrm.settings.dev")
     )  # 切换配置
     if len(sys.argv) > 1 and sys.argv[1] == 'runserver':
         from django.core.cache import cache

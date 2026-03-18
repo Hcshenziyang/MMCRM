@@ -4,7 +4,7 @@ import json
 from decouple import config
 
 DIFY_API_KEY = config('DIFY_API_KEY')
-
+print(DIFY_API_KEY)
 
 url = "http://localhost/v1/chat-messages"
 headers = {

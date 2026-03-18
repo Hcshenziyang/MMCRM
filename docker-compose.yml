@@ -22,7 +22,7 @@ services:
     image: mycrm-backend:v0.7.1
     container_name: django_backend
     env_file:
-      - .env
+      - .env.prod
     depends_on:
       - db
       - redis
