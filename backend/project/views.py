@@ -16,8 +16,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['owner', 'current_stage', 'source']
-    search_fields = ['name', 'customer__name']
-    ordering_fields = ['created_at', 'expected_close_date', 'actual_close_date']
+    search_fields = ['name', 'customer_name']
+    ordering_fields = ['created_at']
     ordering = ['-created_at']
     permission_classes = [IsAuthenticated, CachedModelPermissions]
     def get_queryset(self):

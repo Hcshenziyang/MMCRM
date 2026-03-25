@@ -35,6 +35,7 @@ class CustomersSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
+    # region 缓存优化的 list 方法（已注释，改为直接走 DRF 标准查询）
     # def list(self, request, *args, **kwargs):
     #     # 使用缓存
     #     # 获取客户数据版本号
@@ -59,6 +60,7 @@ class CustomersSet(viewsets.ModelViewSet):
     #     # print(f"写入缓存成功。Key: {cache_key}")
     #
     #     return response
+    # endregion
 
     # list 但不做缓存优化 → 直接走 DRF 标准查询
     def list(self, request, *args, **kwargs):

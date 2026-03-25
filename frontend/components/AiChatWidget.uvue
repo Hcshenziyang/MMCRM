@@ -1,0 +1,303 @@
+<template>
+  <view class="ai-root">
+    <!-- 悬浮按钮 -->
+    <view v-if="!open" class="ai-fab" @click="toggleOpen">
+      <text class="ai-fab-text">AI</text>
+    </view>
+
+    <!-- 遮罩 + 弹窗 -->
+    <view v-if="open" class="ai-mask" @click.self="close">
+      <view class="ai-panel">
+        <view class="ai-header">
+          <text class="ai-title">AI 助手</text>
+          <view class="ai-header-actions">
+            <button class="ai-mini-btn" @click="clearChat">清空</button>
+            <button class="ai-mini-btn" @click="close">关闭</button>
+          </view>
+        </view>
+
+        <scroll-view class="ai-body" scroll-y :scroll-top="scrollTop">
+          <view v-if="messages.length === 0" class="ai-empty">
+            <text class="ai-empty-text">你好，我可以帮你查资料、写总结、生成客户沟通话术等。</text>
+          </view>
+
+          <view v-for="(m, idx) in messages" :key="idx" class="ai-msg-row" :class="m.role === 'user' ? 'is-user' : 'is-ai'">
+            <view class="ai-bubble">
+              <text class="ai-msg-text">{{ m.content }}</text>
+            </view>
+          </view>
+
+          <view v-if="sending" class="ai-msg-row is-ai">
+            <view class="ai-bubble">
+              <text class="ai-msg-text">正在思考…</text>
+            </view>
+          </view>
+        </scroll-view>
+
+        <view class="ai-footer">
+          <input
+            class="ai-input"
+            v-model="draft"
+            placeholder="输入问题，回车发送"
+            confirm-type="send"
+            @confirm="send"
+          />
+          <button class="ai-send" :disabled="sending || !draft.trim()" @click="send">发送</button>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+import { aiChat } from '../common/api.js'
+
+export default {
+  name: 'AiChatWidget',
+  data() {
+    return {
+      open: false,
+      draft: '',
+      sending: false,
+      conversationId: null,
+      messages: [],
+      scrollTop: 0,
+    }
+  },
+  methods: {
+    toggleOpen() {
+      this.open = !this.open
+      if (this.open) this.bumpScroll()
+    },
+    close() {
+      this.open = false
+    },
+    clearChat() {
+      this.messages = []
+      this.conversationId = null
+      this.draft = ''
+      this.bumpScroll()
+    },
+    bumpScroll() {
+      // 简单触发 scroll-view 滚动到底部（uni-app 常用技巧）
+      this.scrollTop = 999999
+    },
+    async send() {
+      const text = (this.draft || '').trim()
+      if (!text || this.sending) return
+
+      this.messages.push({ role: 'user', content: text })
+      this.draft = ''
+      this.sending = true
+      this.bumpScroll()
+
+      try {
+        // DeepSeek 需要多轮对话时，把历史 messages 全量带上
+        // 这里统一转成后端可接受的 role：user / assistant / system
+        const history = this.messages
+          .filter(m => m && (m.content || '').trim())
+          .map(m => ({
+            role: m.role === 'ai' ? 'assistant' : m.role,
+            content: m.content,
+          }))
+
+        const res = await aiChat({
+          messages: history,
+          conversationId: this.conversationId,
+        })
+
+        // 兼容多种返回格式：
+        // - { reply, conversation_id }
+        // - { message, conversation_id }
+        // - 直接字符串
+        const reply =
+          (res && (res.reply || res.message || res.answer || res.data?.reply || res.data?.message)) ??
+          (typeof res === 'string' ? res : '')
+        const cid = res && (res.conversation_id || res.conversationId || res.data?.conversation_id)
+
+        if (cid) this.conversationId = cid
+        this.messages.push({ role: 'ai', content: reply || '（无返回内容）' })
+      } catch (e) {
+        const msg =
+          (e && (e.data?.detail || e.data?.message || e.errMsg || e.message)) ||
+          '请求失败'
+        this.messages.push({ role: 'ai', content: `接口错误：${msg}` })
+      } finally {
+        this.sending = false
+        this.bumpScroll()
+      }
+    },
+  },
+}
+</script>
+
+<style scoped>
+.ai-root {
+  position: relative;
+}
+
+.ai-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
+  background: #ff8c5a;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.ai-fab-text {
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.ai-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 9998;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 18px;
+  box-sizing: border-box;
+}
+
+.ai-panel {
+  width: 360px;
+  height: 520px;
+  background: #fffaf6;
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-header {
+  height: 54px;
+  background: #fff0e2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.ai-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+}
+
+.ai-header-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.ai-mini-btn {
+  background: #fea17a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  margin: 0;
+}
+.ai-mini-btn::after {
+  border: none;
+}
+
+.ai-body {
+  flex: 1;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.ai-empty {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+}
+.ai-empty-text {
+  color: #555;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.ai-msg-row {
+  display: flex;
+  margin-top: 10px;
+}
+.ai-msg-row.is-user {
+  justify-content: flex-end;
+}
+.ai-msg-row.is-ai {
+  justify-content: flex-start;
+}
+
+.ai-bubble {
+  max-width: 82%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.ai-msg-row.is-user .ai-bubble {
+  background: #ffe1d2;
+}
+
+.ai-msg-text {
+  color: #333;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.ai-footer {
+  padding: 10px;
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.ai-input {
+  flex: 1;
+  height: 36px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 13px;
+  box-sizing: border-box;
+  background: #fffaf6;
+}
+
+.ai-send {
+  background: #ff8c5a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0 14px;
+  height: 36px;
+  font-size: 13px;
+  margin: 0;
+}
+.ai-send::after {
+  border: none;
+}
+.ai-send[disabled] {
+  opacity: 0.55;
+}
+</style>

@@ -12,7 +12,7 @@
           <li>权限系统基于 RBAC 角色模型，实现用户级数据隔离;</li>
           <li>支持客户与项目的增删改查、搜索筛选及权限过滤;</li>
           <li>使用 Redis 缓存机制优化高频查询性能;</li>
-          <li>前端采用 uni-app 实现多端页面统一;</li>
+          <li>前端采用 uni-app 实现;</li>
           <li>通过 Docker 容器化部署上线，支持快速环境复现;</li>
           <li>数据库：MySQL · 缓存：Redis · 框架：Django REST Framework;</li>
         </ul>

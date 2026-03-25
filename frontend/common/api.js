@@ -154,11 +154,26 @@ export function stage_view(data) {
 }
 
 
-export async function aiChat(message, conversationId = null) {
+/**
+ * @param {Object} params
+ * @param {string} [params.message] - 单条用户输入（兼容旧接口）
+ * @param {Array<{role: 'user'|'ai'|'assistant'|'system', content: string}>} [params.messages] - 全量对话历史（推荐）
+ * @param {string|null} [params.conversationId]
+ */
+export async function aiChat({ message, messages, conversationId = null } = {}) {
   const data = {
-    message,
     conversation_id: conversationId,
   };
+
+  if (Array.isArray(messages) && messages.length > 0) {
+    data.messages = messages;
+    // 兼容后端仍然只读 message/query 的情况
+    const lastUser = [...messages].reverse().find(m => m && m.role === "user" && (m.content || "").trim());
+    if (lastUser) data.message = (lastUser.content || "").trim();
+  } else {
+    data.message = message;
+  }
+
   // 默认走鉴权（如确实免鉴权，再在调用方传 opts 或改这里）
   return request("/aihelper/ai/chat/", "POST", data);
 }
